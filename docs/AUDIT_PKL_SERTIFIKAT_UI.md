@@ -2,6 +2,8 @@
 
 Tanggal: 22 Oktober 2026. Audit kode dan database lokal, bukan validasi data produksi.
 
+> Pembaruan 24 Oktober 2026: red flag Laporan & Audit sudah ditutup melalui ekspor seluruh roster dan filter tahun/jurusan. Semua flag manajemen pada konfigurasi saat ini telah dilepas. [Verifikasi laporan](LAPORAN_ROSTER.md) dan [sisa kekurangan terbaru](KEKURANGAN_SETELAH_UPGRADE.md). Pernyataan flag/pekerjaan belum selesai di bawah adalah riwayat pada tanggal audit awal.
+
 ## Pembaruan lanjutan 23 Oktober: tag dan penempatan
 
 Periode kini hanya tag tahun ajaran database. Penempatan sudah memiliki FK roster dan checkbox multi-siswa/jurusan. Timeline, jurnal, laporan penempatan, dan tanggal PDF memakai jadwal roster tanpa fallback tanggal periode. Red flag Penempatan dan Periode sudah dilepas; red flag Laporan tetap karena belum mencakup seluruh siswa yang belum ditempatkan. Lihat [aturan terbaru dan akun demo](TAG_PKL_DAN_PENEMPATAN.md). Temuan historis di bawah tidak semuanya masih berlaku; snapshot sertifikat tetap belum selesai.

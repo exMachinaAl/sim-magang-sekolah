@@ -94,11 +94,11 @@ class RosterImportUiTest extends TestCase
         $this->assertDatabaseHas('internship_rosters', ['nis'=>'000123','academic_year'=>'2027/2028']);
     }
 
-    public function test_management_flags_explain_legacy_issues_without_blocking_pages(): void
+    public function test_resolved_management_flags_are_removed_without_granting_student_access(): void
     {
         $this->actingAs($this->coordinator());
         foreach (['reports.index'] as $route) {
-            $this->get(route($route))->assertOk()->assertSee('RED FLAG — modul belum sepenuhnya sinkron')->assertSee('Buka Kontrol PKL');
+            $this->get(route($route))->assertOk()->assertDontSee('RED FLAG — modul belum sepenuhnya sinkron')->assertSee('Seluruh Siswa / Roster');
         }
         foreach (['placements.index','periods.index'] as $route) {
             $this->get(route($route))->assertOk()->assertDontSee('RED FLAG — modul belum sepenuhnya sinkron');

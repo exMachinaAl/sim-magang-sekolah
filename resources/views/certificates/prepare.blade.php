@@ -6,7 +6,7 @@
 @if($placement->certificate)<p><a class="btn btn-primary" href="{{ route('certificates.show',$placement->certificate) }}">Buka detail &amp; persetujuan</a></p>@endif
 <div class="card"><h2>{{ $placement->student->user->name }} · {{ $placement->student->nis }}</h2><p>{{ $placement->roster?->class_name }} · {{ $placement->roster?->major }} · {{ $placement->period->academic_year }}<br>{{ $placement->company->name }}</p>
 <p>Tanggal lahir dari Data Siswa: {{ $placement->student->birth_date?->format('d/m/Y') ?? 'Belum diisi — lengkapi Data Siswa' }}. Penilai industri: {{ $placement->assessment?->industry_assessor ?? 'Belum tersedia' }}.</p>
-<form method="GET"><label>Template cetak yang sesuai ketentuan siswa<select name="print_template_id" required><option value="">Pilih template cetak</option>@foreach($templates as $t)<option value="{{ $t->id }}" @selected($selected?->id===$t->id)>{{ $t->name }} #{{ $t->id }} · {{ $t->front_hash?'DOCX':'PDF bawaan' }}</option>@endforeach</select></label><button class="btn btn-secondary">Pilih Format</button></form>
+<form method="GET"><label>Template cetak yang sesuai ketentuan siswa<select name="print_template_id" required><option value="">Pilih template cetak</option>@foreach($templates as $t)<option value="{{ $t->id }}" @selected($selected?->id===$t->id)>{{ $t->name }} #{{ $t->id }} · {{ $t->formatLabel() }}</option>@endforeach</select></label><button class="btn btn-secondary">Pilih Format</button></form>
 @if($templates->isEmpty())<p>Belum ada template cetak untuk versi penilaian siswa ini. Buat melalui Kelola template cetak. Penilaian skema lama harus diperiksa dahulu, tidak dikonversi otomatis.</p>@endif</div>
 @if($selected)
 @php $existing=$placement->certificate; $options=$existing?->print_options ?? []; @endphp
@@ -24,6 +24,8 @@
 @else<p>Penandatangan nilai diambil dari penilai industri pada penilaian disahkan: {{ $placement->assessment?->industry_assessor }}.</p>@endif
 @if($existing)<label>Alasan revisi<textarea name="note" required maxlength="2500">{{ old('note') }}</textarea></label>@endif
 </div><p>Nilai akhir resmi: {{ $placement->assessment?->final_score }}. Semua isi disimpan sebagai arsip versi saat diajukan. Pengesahan aplikasi tetap dilakukan koordinator.</p><button class="btn btn-primary">{{ $existing?'Ajukan Versi Baru':'Buat & Ajukan Sertifikat' }}</button>
+<button class="btn btn-secondary" type="submit" name="_method" value="POST" formaction="{{ route('certificates.preview',$placement) }}" formtarget="_blank" formnovalidate>Pratinjau PDF</button>
+<p class="small muted">Pratinjau dibuka di tab baru, diberi tanda belum diterbitkan, dan tidak menyimpan pengajuan atau mengubah versi. Periksa nama panjang, tabel nilai, posisi dekorasi serta hasil cetak 100% sebelum pengesahan. DOCX salinan tetap memakai susunan Word tersendiri, dekorasi PDF tidak otomatis menjadi desain Word.</p>
 </form></div>
 @endif
 @endsection

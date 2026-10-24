@@ -68,6 +68,13 @@ class CertificateArchive
 
     public function capture(Certificate $certificate, ?int $actor, string $source='submission', ?string $note=null): CertificateDocument
     {
+        return $certificate->documents()->create(['version'=>$certificate->version,
+            'source'=>$source,'note'=>$note,'captured_by'=>$actor]+$this->render($certificate));
+    }
+
+    /** Same render/validation for preview and capture; this method never writes a document. */
+    public function render(Certificate $certificate): array
+    {
         $snapshot=$this->source($certificate);
         $templated=(bool)$certificate->placement->assessment->template_snapshot;
         $html=view(isset($snapshot['print'])?'certificates.print-pdf':($templated?'certificates.template-pdf':'certificates.pdf'),[
@@ -75,7 +82,10 @@ class CertificateArchive
             'endsAt'=>$certificate->placement->roster->internship_ends_at,
         ])->render();
         $docx=[];
-        if (isset($snapshot['print']) && $snapshot['print']['front_hash']) {
+        if (isset($snapshot['print']['pdf_background'])) {
+            $render=app(CertificatePdfBackground::class)->render($certificate,$snapshot['print']);
+            $bytes=$render['pdf']; $html=$render['html'];
+        } elseif (isset($snapshot['print']) && $snapshot['print']['front_hash']) {
             $render=app(CertificateDocx::class)->render(\App\Models\CertificatePrintTemplate::findOrFail($certificate->print_template_id),$snapshot['print']['values']);
             $bytes=$render['pdf']; unset($render['pdf']); $docx=$render;
         } else {
@@ -86,8 +96,8 @@ class CertificateArchive
         ]);
         $bytes=$pdf->output();
         }
-        return $certificate->documents()->create(['version'=>$certificate->version,'snapshot'=>$snapshot,'rendered_html'=>$html,
-            'pdf_base64'=>base64_encode($bytes),'sha256'=>hash('sha256',$bytes),'source'=>$source,'note'=>$note,'captured_by'=>$actor]+$docx);
+        return ['snapshot'=>$snapshot,'rendered_html'=>$html,
+            'pdf_base64'=>base64_encode($bytes),'sha256'=>hash('sha256',$bytes)]+$docx;
     }
 
     public function bytes(CertificateDocument $document): string

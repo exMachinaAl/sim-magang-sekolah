@@ -1,5 +1,6 @@
 <?php
 return [
+    // Optional DOCX conversion extension. Builtin/decorated PDF never use this executable.
     // Absolute server-side executable path, never accepted from an HTTP request.
     'libreoffice' => env('CERTIFICATE_LIBREOFFICE', ''),
     'front_variants' => ['kepala_sekolah'=>'Kepala sekolah', 'kepala_sekolah_dan_industri'=>'Kepala sekolah dan industri'],

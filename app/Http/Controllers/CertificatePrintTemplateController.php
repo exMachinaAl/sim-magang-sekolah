@@ -2,7 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\{AssessmentTemplate, CertificatePrintTemplate};
-use App\Support\{Audit, CertificateDocx, CertificatePrint};
+use App\Support\{Audit, CertificateDocx, CertificatePrint, CertificatePdfBackground};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -16,7 +16,7 @@ class CertificatePrintTemplateController
         return view('certificates.print-templates',[
             'assessmentTemplates'=>AssessmentTemplate::where('is_active',true)->orderBy('major')->get(['id','name','major']),
             'assessmentTemplate'=>$assessmentTemplate,
-            'items'=>CertificatePrintTemplate::select('id','name','assessment_template_id','front_variant','back_variant','front_hash')->with('assessmentTemplate')->latest()->paginate(15),
+            'items'=>CertificatePrintTemplate::select('id','name','assessment_template_id','front_variant','back_variant','front_hash','front_pdf_hash')->with('assessmentTemplate')->latest()->paginate(15),
         ]);
     }
 
@@ -25,9 +25,14 @@ class CertificatePrintTemplateController
         $rules=['name'=>'required|string|max:150','assessment_template_id'=>'required|integer|exists:assessment_templates,id',
             'front_variant'=>['required',Rule::in(array_keys(config('certificate_print.front_variants')))],
             'back_variant'=>['required',Rule::in(array_keys(config('certificate_print.back_variants')))],
-            'renderer'=>'required|in:builtin,docx','grade_format'=>'required|in:custom,80_20',
+            'renderer'=>'required|in:builtin,pdf_background,docx','grade_format'=>'required|in:custom,80_20',
+            'front_pdf'=>'required_if:renderer,pdf_background|nullable|file|mimes:pdf|max:2048',
+            'back_pdf'=>'required_if:renderer,pdf_background|nullable|file|mimes:pdf|max:2048',
             'front_docx'=>'required_if:renderer,docx|nullable|file|mimes:docx|max:4096',
             'back_docx'=>'required_if:renderer,docx|nullable|file|mimes:docx|max:4096'];
+        foreach (['front','back'] as $side) foreach (['x','y','width','height'] as $key) {
+            $rules['pdf_layout.'.$side.'.'.$key]='required_if:renderer,pdf_background|nullable|numeric|between:0,297';
+        }
         foreach (config('certificate_print.settings') as $key=>$label) $rules['settings.'.$key]='required|string|max:150';
         foreach (config('certificate_print.mapping') as $key=>$label) $rules['score_mapping.'.$key]='required_if:grade_format,80_20|nullable|string|max:30';
         $data=$r->validate($rules); $assessment=AssessmentTemplate::findOrFail($data['assessment_template_id']);
@@ -39,6 +44,15 @@ class CertificatePrintTemplateController
             app(CertificatePrint::class)->validateMapping($mapping,$assessment->fields);
         }
         $files=[];
+        if ($data['renderer']==='pdf_background') {
+            $service=app(CertificatePdfBackground::class);
+            $files['pdf_layout']=$service->validateLayout($data['pdf_layout']);
+            foreach (['front','back'] as $side) {
+                $bytes=$service->normalize(file_get_contents($r->file($side.'_pdf')->getRealPath()));
+                $files[$side.'_pdf']=base64_encode($bytes);
+                $files[$side.'_pdf_hash']=hash('sha256',$bytes);
+            }
+        }
         if ($data['renderer']==='docx') foreach (['front','back'] as $side) {
             $file=$r->file($side.'_docx'); $service=app(CertificateDocx::class);
             $bytes=$service->sanitize($file->getRealPath());
@@ -62,7 +76,8 @@ class CertificatePrintTemplateController
         DB::transaction(function () use ($r,$data,$mapping,$files) {
             $template=CertificatePrintTemplate::create(array_intersect_key($data,array_flip(['name','assessment_template_id','front_variant','back_variant','settings']))
                 + ['score_mapping'=>$mapping,'created_by'=>$r->user()->id] + $files);
-            Audit::record('certificate_print_template.created',$template,['front_hash'=>$template->front_hash,'back_hash'=>$template->back_hash]);
+            Audit::record('certificate_print_template.created',$template,['front_hash'=>$template->front_hash,'back_hash'=>$template->back_hash,
+                'renderer'=>$template->renderer(),'front_pdf_hash'=>$template->front_pdf_hash,'back_pdf_hash'=>$template->back_pdf_hash]);
         });
         return redirect()->route('certificate-print-templates.index')->with('success','Template cetak tersimpan sebagai versi baru. Arsip lama tidak diubah.');
     }
@@ -75,5 +90,14 @@ class CertificatePrintTemplateController
         $bytes=app(CertificateDocx::class)->sanitize(resource_path('templates/certificates/'.$names[$variant]));
         return response($bytes,200,['Content-Type'=>'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition'=>'attachment; filename="'.$names[$variant].'"','Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff']);
+    }
+
+    public function pdfSample(string $side)
+    {
+        abort_unless(in_array($side,['front','back'],true),404);
+        return response(app(CertificatePdfBackground::class)->sample($side),200,[
+            'Content-Type'=>'application/pdf','Content-Disposition'=>'attachment; filename="contoh-dekorasi-'.$side.'.pdf"',
+            'Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff',
+        ]);
     }
 }

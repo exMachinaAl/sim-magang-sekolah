@@ -1,9 +1,6 @@
 <?php
 
 // Remove a flag only after the documented integration issue has been fixed and tested.
-return [
-    'reports' => [
-        'routes' => 'reports.*',
-        'message' => 'Ekspor laporan masih berbasis siswa yang sudah ditempatkan, belum mencakup seluruh roster sekolah. Fase penempatan sudah mengikuti Kontrol PKL. Untuk rekap seluruh siswa, gunakan Ekspor Hasil di Kontrol PKL. Riwayat audit tetap dapat digunakan.',
-    ],
-];
+// Reports resolved: full roster export, historical year/major filters and date phases.
+// Verification and remaining limits: docs/LAPORAN_ROSTER.md.
+return [];

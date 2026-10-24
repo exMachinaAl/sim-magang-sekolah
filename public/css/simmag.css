@@ -37,4 +37,5 @@
 @media(max-width:780px){.lifecycle-stats,.major-checkbox-grid,.batch-student-list{grid-template-columns:1fr}.batch-section-head{align-items:flex-start;flex-direction:column}.batch-student{grid-template-columns:auto 1fr}.batch-student em{grid-column:2}}
 .date-lifecycle-list .student-timeline-row{grid-template-columns:18px 105px minmax(0,1fr) 130px}.date-audit-note{margin-top:14px;padding:10px 12px;border-radius:8px;background:#f5f8fe;color:var(--muted);font-size:10px}
 #student-timeline .btn{max-width:100%;white-space:normal;text-align:center}#student-timeline .student-profile-bar{overflow-wrap:anywhere}
+.dashboard-summary-columns>.card{min-width:0;overflow-wrap:anywhere}.dashboard-summary-columns .card-head{flex-wrap:wrap}.dashboard-summary-columns table{min-width:480px;overflow-wrap:normal}
 @media(max-width:780px){.date-lifecycle-list .student-timeline-row{grid-template-columns:18px 65px minmax(0,1fr);align-items:start}.date-lifecycle-list .timeline-row-status{grid-column:3}#student-timeline .card-head{flex-wrap:wrap}}

@@ -2,6 +2,10 @@
 
 ## Tahap aktif — 24 Oktober 2026
 
+Laporan & Audit selesai untuk red flag terakhir di manajemen: ekspor seluruh roster termasuk belum ditempatkan, filter tahun/jurusan untuk semua ekspor, label historis dan fase WIB. Flag dicopot setelah 146 tes dan uji browser lulus, tanpa migrasi/reset. [Cara mencoba](LAPORAN_ROSTER.md). [Daftar kekurangan setelah upgrade](KEKURANGAN_SETELAH_UPGRADE.md) mencatat arsip sertifikat lama, konversi/cetak, kiosk HP, backup/konkurensi dan UAT yang masih tersisa; tidak ada penambahan di luar flag.
+
+Dashboard selesai untuk tiga temuan flag: tag tahun menyaring seluruh ringkasan, siswa dihitung unik, dan fase dari roster direkap per jurusan/sekolah sesuai akses. Flag dicopot setelah pengujian; tanpa migrasi/reset. [Cara mencoba dan batas rekap](DASHBOARD_REKAP_TAHUN.md). Sisa flag menu utama adalah Sertifikat (arsip lama dan pengujian dokumen/cetak) serta Jurnal (kamera HP/perangkat dan cetak). Tidak menambah fitur di luar flag.
+
 Penilaian selesai untuk tiga temuan flag: label historis roster, bukti industri privat/berversi unggah, pencarian dan filter rekap tahun/jurusan. Flag Penilaian dicopot setelah pengujian. [Uji contoh dan batas cakupan](PENILAIAN_BUKTI_DAN_REKAP.md). Prioritas kode berikutnya **Dashboard** sesuai flag; sertifikat/jurnal masih membutuhkan pemeriksaan dokumen dan UAT lapangan.
 
 Monitoring selesai untuk temuan audit: kategori kasus, penanggung jawab koordinator, guru opsional, status selesai/buka kembali, riwayat dan deteksi tab lama. Flag Monitoring dicopot, bukan flag modul lain. [Uji satu contoh yang sudah disiapkan](MONITORING_TINDAK_LANJUT.md). Prioritas kode berikutnya **Penilaian** sesuai flag (identitas historis, bukti industri, filter rekap), tanpa penambahan di luar audit.
@@ -24,7 +28,7 @@ Urutan kerja berikutnya:
 2. **Timeline — selesai:** daftar roster, card jurusan → tabel siswa, termasuk belum ditempatkan; flag dicopot setelah tes regresi/browser/MySQL lulus.
 3. **Monitoring — selesai untuk temuan audit:** penanggung jawab, kategori, status, riwayat, pencarian/filter, guru opsional serta ID editor sudah diterapkan dan diuji; lanjut evaluasi pengguna.
 4. **Penilaian — selesai untuk temuan audit:** label historis roster, bukti sumber industri privat, filter rekap tanpa selector siswa; lanjut evaluasi pengguna dan kelengkapan dokumen asli.
-5. **Dashboard:** tag tahun, siswa unik, rekap PKL/sekolah per jurusan dan keseluruhan.
+5. **Dashboard — selesai untuk temuan audit:** tag tahun, siswa unik, rekap PKL/sekolah per jurusan dan keseluruhan sesuai hak akses; lanjut evaluasi angka roster nyata.
 6. **UAT paralel:** pengguna mencoba kiosk; uji HP, HTTPS, cetak fisik, backup/restore, dan beban transaksi tetap dicatat terpisah dari kelulusan tes kode.
 
 Bagian di bawah adalah riwayat tahapan sebelumnya; jangan memakai daftar lama untuk menyimpulkan perbaikan di atas belum dikerjakan.

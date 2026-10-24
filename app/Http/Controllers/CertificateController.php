@@ -167,7 +167,7 @@ class CertificateController {
  public function prepare(Request $r,Placement $placement){
   $placement=Access::placement($r->user(),$placement->id);
   $placement->load(['student.user','roster','period','company','assessment','certificate']);
-  $templates=\App\Models\CertificatePrintTemplate::select('id','name','front_variant','back_variant','front_hash')->where('assessment_template_id',$placement->assessment?->assessment_template_id)->latest()->get();
+  $templates=\App\Models\CertificatePrintTemplate::select('id','name','front_variant','back_variant','front_hash','front_pdf_hash')->where('assessment_template_id',$placement->assessment?->assessment_template_id)->latest()->get();
   $r->validate(['print_template_id'=>'nullable|integer|min:1']);
   $selected=$r->integer('print_template_id')?$templates->firstWhere('id',$r->integer('print_template_id')):null;
   if($r->integer('print_template_id'))abort_unless($selected,422,'Template cetak tidak sesuai penilaian siswa.');

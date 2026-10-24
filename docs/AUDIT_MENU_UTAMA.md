@@ -1,5 +1,7 @@
 # Audit menu utama — 23 Oktober 2026
 
+> Pembaruan Dashboard 24 Oktober 2026: ketiga temuan filter tag tahun, siswa unik, serta rekap fase sekolah/jurusan telah ditutup. Flag Dashboard dilepas setelah tes regresi, browser, dan query MySQL baca-saja. [Panduan dan batas](DASHBOARD_REKAP_TAHUN.md). Temuan Dashboard di bawah adalah riwayat audit.
+
 > Pembaruan Penilaian: ketiga temuan label historis, dokumen sumber industri, dan filter rekap telah ditutup. Flag STABLE disembunyikan dari UI setelah pengujian. [Panduan dan batas cakupan](PENILAIAN_BUKTI_DAN_REKAP.md). Bagian temuan Penilaian di bawah adalah riwayat, bukan status terbaru.
 
 > Pembaruan Monitoring tahap 2: temuan kategori/penanggung jawab/status/riwayat sudah ditutup, termasuk penguncian revisi dan guru opsional. Flag Monitoring kini STABLE dan disembunyikan dari UI. [Panduan serta batas cakupan](MONITORING_TINDAK_LANJUT.md). Keterangan tahap 1/historis di bawah tidak lagi berarti temuan tersebut masih terbuka.

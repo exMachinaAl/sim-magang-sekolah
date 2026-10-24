@@ -2,7 +2,7 @@
 namespace Tests\Feature;
 
 use App\Models\{AssessmentTemplate, Certificate, CertificatePrintTemplate, Placement, User};
-use App\Support\{CertificateDocx, CertificatePrint};
+use App\Support\{CertificateDocx, CertificatePrint, CertificatePdfBackground};
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -193,5 +193,118 @@ class CertificatePrintTest extends TestCase
         $this->put(route('certificates.approve',$c),['version'=>1,'decision'=>'approved'])->assertSessionHasErrors('certificate');
         $this->assertStringContainsString('Gresik',$c->documents()->firstOrFail()->snapshot['print']['values']['tempat_tanggal_lahir']);
         $this->expectException(\LogicException::class); $t->update(['name'=>'Overwrite']);
+    }
+
+    private function pdfData(array $extra=[]): array
+    {
+        $service=app(CertificatePdfBackground::class);
+        return $this->templateData(array_replace(['renderer'=>'pdf_background',
+            'front_pdf'=>UploadedFile::fake()->createWithContent('depan.pdf',$service->sample('front')),
+            'back_pdf'=>UploadedFile::fake()->createWithContent('belakang.pdf',$service->sample('back')),
+            'pdf_layout'=>CertificatePdfBackground::defaultLayout()],$extra));
+    }
+
+    public function test_pdf_background_preview_and_issue_without_libreoffice_preserve_old_archives(): void
+    {
+        config(['certificate_print.libreoffice'=>'']);
+        $this->post(route('certificate-print-templates.store'),$this->pdfData(['front_variant'=>'kepala_sekolah_dan_industri','back_variant'=>'pembimbing_sekolah']))->assertSessionHasNoErrors();
+        $t=CertificatePrintTemplate::latest('id')->firstOrFail();
+        $this->assertSame('pdf_background',$t->renderer());
+        $this->assertNull($t->front_hash); $this->assertNull($t->front_docx);
+        $this->assertSame($t->front_pdf_hash,hash('sha256',base64_decode($t->front_pdf)));
+        $counts=[Certificate::count(),\App\Models\CertificateDocument::count(),\App\Models\AuditLog::count()];
+        $data=$this->submission($t);
+        $preview=$this->post(route('certificates.preview',$this->placement),$data)->assertOk()->assertHeader('Content-Type','application/pdf');
+        $this->assertSame($counts,[Certificate::count(),\App\Models\CertificateDocument::count(),\App\Models\AuditLog::count()]);
+        $reader=new \setasign\Fpdi\Fpdi;
+        $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($preview->getContent())));
+        $this->post(route('certificates.create'),$data)->assertSessionHasNoErrors();
+        $c=$this->placement->certificate()->firstOrFail();
+        $doc=$c->documents()->firstOrFail();
+        $this->assertSame($t->front_pdf_hash,$doc->snapshot['print']['pdf_background']['front_hash']);
+        $this->assertSame('85,00',$doc->snapshot['print']['values']['nilai_akhir_pkl']);
+        $this->assertStringContainsString('Pimpinan Uji',$doc->rendered_html);
+        $this->assertStringContainsString('00076543',$doc->rendered_html);
+        $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString(base64_decode($doc->pdf_base64))));
+        $this->assertNotSame($preview->getContent(),base64_decode($doc->pdf_base64));
+        $this->put(route('certificates.approve',$c),['version'=>1,'decision'=>'approved'])->assertSessionHasNoErrors();
+        $original=$this->get(route('certificates.pdf',$c))->assertOk()->getContent();
+        $this->post(route('certificates.prepare-word',$c),['version'=>1])->assertSessionHasNoErrors();
+        $this->get(route('certificates.docx',[$c,'front']))->assertOk();
+        // The revision form sends _method=POST for preview even though normal submission is PUT.
+        $this->post(route('certificates.preview',$this->placement),$data+['_method'=>'POST'])->assertOk();
+        $this->assertSame(1,$c->fresh()->version);
+        $other=$this->template();
+        $this->put(route('certificates.resubmit',$c),$this->submission($other)+['version'=>1,'note'=>'Kembali ke PDF bawaan untuk uji versi.'])->assertSessionHasNoErrors();
+        $this->assertSame($original,$this->get(route('certificates.pdf',[$c,'version'=>1]))->assertOk()->getContent());
+    }
+
+    public function test_pdf_background_rejects_invalid_files_layout_and_excess_pages(): void
+    {
+        $cases=[
+            ['front_pdf'=>UploadedFile::fake()->createWithContent('broken.pdf','not a pdf')],
+            ['front_pdf'=>UploadedFile::fake()->create('large.pdf',2049,'application/pdf')],
+            ['front_pdf'=>UploadedFile::fake()->createWithContent('landscape.pdf',Pdf::loadHTML('Landscape')->setPaper('a4','landscape')->output())],
+            ['back_pdf'=>UploadedFile::fake()->createWithContent('two.pdf',Pdf::loadHTML('<p>One</p><p style="page-break-before:always">Two</p>')->setPaper('a4')->output())],
+            ['pdf_layout'=>['front'=>['x'=>80,'y'=>25,'width'=>170,'height'=>247],'back'=>CertificatePdfBackground::defaultLayout()['back']]],
+        ];
+        foreach ($cases as $extra) $this->post(route('certificate-print-templates.store'),$this->pdfData($extra))->assertSessionHasErrors();
+        $this->assertDatabaseCount('certificate_print_templates',0);
+        $this->get(route('certificate-print-templates.pdf-sample','front'))->assertOk()->assertHeader('Content-Type','application/pdf');
+        $this->get(route('certificate-print-templates.pdf-sample','invalid'))->assertNotFound();
+    }
+
+    public function test_pdf_overflow_or_corrupt_background_cannot_publish_partial_certificate(): void
+    {
+        $this->post(route('certificate-print-templates.store'),$this->pdfData())->assertSessionHasNoErrors();
+        $t=CertificatePrintTemplate::latest('id')->firstOrFail();
+        $a=$this->placement->assessment; $snapshot=$a->template_snapshot;
+        $snapshot['fields'][0]['description']=str_repeat('Narasi panjang yang tidak boleh dipotong. ',800);
+        $a->update(['template_snapshot'=>$snapshot]);
+        $this->post(route('certificates.preview',$this->placement),$this->submission($t))->assertSessionHasErrors('certificate');
+        $this->post(route('certificates.create'),$this->submission($t))->assertSessionHasErrors('certificate');
+        $this->assertDatabaseMissing('certificates',['placement_id'=>$this->placement->id]);
+        $a->update(['template_snapshot'=>$this->assessmentTemplate->snapshot()]);
+        $layout=CertificatePdfBackground::defaultLayout(); $layout['back']['height']=140;
+        $this->post(route('certificate-print-templates.store'),$this->pdfData(['pdf_layout'=>$layout]))->assertSessionHasNoErrors();
+        $small=CertificatePrintTemplate::latest('id')->firstOrFail();
+        $snapshot=$a->template_snapshot;
+        foreach ($snapshot['fields'] as &$field) $field['description']=str_repeat('Ketentuan praktik lengkap. ',20);
+        unset($field); $a->update(['template_snapshot'=>$snapshot]);
+        $this->post(route('certificates.preview',$this->placement),$this->submission($small))->assertSessionHasErrors('certificate');
+        $a->update(['template_snapshot'=>$this->assessmentTemplate->snapshot()]);
+        \Illuminate\Support\Facades\DB::table('certificate_print_templates')->where('id',$t->id)->update(['front_pdf'=>base64_encode('corrupt')]);
+        $this->post(route('certificates.create'),$this->submission($t))->assertSessionHasErrors('certificate');
+        $this->assertDatabaseMissing('certificates',['placement_id'=>$this->placement->id]);
+    }
+
+    public function test_pdf_preview_checks_roles_and_required_source_and_accepts_free_form_fields(): void
+    {
+        $p=Placement::whereHas('assessment',fn($q)=>$q->where('status','approved')->where('assessment_template_id','!=',$this->assessmentTemplate->id))->firstOrFail();
+        $this->post(route('certificate-print-templates.store'),$this->pdfData(['assessment_template_id'=>$p->assessment->assessment_template_id,'grade_format'=>'custom']))->assertSessionHasNoErrors();
+        $t=CertificatePrintTemplate::latest('id')->firstOrFail();
+        $this->post(route('certificates.preview',$this->placement),$this->submission($t))->assertSessionHasErrors('certificate');
+        $this->placement=$p;
+        $this->post(route('certificates.preview',$p),$this->submission($t))->assertOk();
+        $p->assessment->update(['status'=>'draft']);
+        $this->post(route('certificates.preview',$p),$this->submission($t))->assertSessionHasErrors('certificate');
+        foreach (['admin','guru','siswa'] as $role) {
+            $this->actingAs(User::where('role',$role)->firstOrFail());
+            $this->post(route('certificates.preview',$p),$this->submission($t))->assertForbidden();
+            $this->get(route('certificate-print-templates.pdf-sample','front'))->assertForbidden();
+        }
+    }
+
+    public function test_decorated_demo_only_adds_one_template_without_reissuing_existing_document(): void
+    {
+        $this->seed(\Database\Seeders\CertificatePreviewDemoSeeder::class);
+        $before=Certificate::get()->toJson();
+        $documents=\App\Models\CertificateDocument::select('id','sha256','version','issued_at')->get()->toJson();
+        $count=CertificatePrintTemplate::count();
+        $this->seed(\Database\Seeders\CertificatePdfTemplateDemoSeeder::class);
+        $this->seed(\Database\Seeders\CertificatePdfTemplateDemoSeeder::class);
+        $this->assertSame($count+1,CertificatePrintTemplate::count());
+        $this->assertSame($before,Certificate::get()->toJson());
+        $this->assertSame($documents,\App\Models\CertificateDocument::select('id','sha256','version','issued_at')->get()->toJson());
     }
 }

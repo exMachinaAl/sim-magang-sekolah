@@ -37,6 +37,8 @@ Route::middleware(['auth','active'])->group(function(){
  Route::get('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'index'])->middleware('role:koordinator')->name('certificate-print-templates.index');
  Route::post('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'store'])->middleware('role:koordinator')->name('certificate-print-templates.store');
  Route::get('sertifikat/template/contoh/{variant}', [\App\Http\Controllers\CertificatePrintTemplateController::class,'sample'])->middleware('role:koordinator')->name('certificate-print-templates.sample');
+ Route::get('sertifikat/template/contoh-pdf/{side}', [\App\Http\Controllers\CertificatePrintTemplateController::class,'pdfSample'])->middleware('role:koordinator')->name('certificate-print-templates.pdf-sample');
+ Route::post('sertifikat/pratinjau/{placement}',\App\Http\Controllers\CertificatePreviewController::class)->middleware(['role:koordinator','throttle:15,1'])->name('certificates.preview');
  Route::get('sertifikat/siapkan/{placement}',[CertificateController::class,'prepare'])->middleware('role:koordinator')->name('certificates.prepare');
  Route::get('sertifikat',[CertificateController::class,'index'])->name('certificates.index');
  Route::post('sertifikat',[CertificateController::class,'create'])->middleware('role:koordinator')->name('certificates.create');

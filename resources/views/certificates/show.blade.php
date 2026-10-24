@@ -7,6 +7,7 @@
 @php $frozen=$document?->snapshot; @endphp
 @if(auth()->user()->isRole('koordinator'))<p><a class="btn btn-secondary" href="{{ route('certificates.prepare',$certificate->placement_id) }}">Atur template / identitas cetak untuk versi baru</a></p>@endif
 @if(isset($frozen['print']))<div class="card"><h2>Format dokumen versi ini</h2><p>{{ $frozen['print']['template_name'] }} · {{ config('certificate_print.front_variants.'.$frozen['print']['front_variant']) }} / {{ config('certificate_print.back_variants.'.$frozen['print']['back_variant']) }}</p><p>Kepala sekolah: {{ $frozen['print']['values']['nama_kepala_sekolah'] }} · NIP {{ $frozen['print']['values']['nip_kepala_sekolah'] }}<br>Penandatangan nilai: {{ $frozen['print']['values']['nama_pembimbing'] }}</p>
+@if(isset($frozen['print']['pdf_background']))<p>PDF berdekorasi: desain dan area isi terikat pada versi ini. Salinan DOCX memakai susunan Word tersendiri, tanpa menyalin dekorasi PDF.</p>@endif
 </div>@endif
 @if($document?->issued_at)
 <div class="card"><h2>Word / DOCX versi {{ $document->version }}</h2>

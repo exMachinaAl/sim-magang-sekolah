@@ -7,15 +7,11 @@ return [
     'modules' => [
         'dashboard' => [
             'name' => 'Dashboard', 'routes' => ['dashboard'],
-            'status' => 'unstable', 'priority' => 'P2', 'order' => 6,
-            'summary' => 'Ringkasan belum dipisahkan per tahun ajaran dan belum menjadi rekap status PKL seluruh sekolah.',
-            'working' => 'Data diri dan status PKL siswa sudah membaca profil serta roster Kontrol PKL.',
-            'issues' => [
-                'Angka jurnal, sertifikat, dan penempatan mencampur seluruh tahun ajaran; belum ada filter tag tahun.',
-                'Siswa Terpantau untuk guru/siswa menghitung penempatan, bukan siswa unik. Satu siswa lintas tahun dapat dihitung beberapa kali.',
-                'Belum ada ringkasan Sedang PKL / Masuk sekolah per jurusan dari seluruh roster.',
-            ],
-            'next' => 'Pisahkan ringkasan per peran, filter tahun ajaran, dan gunakan siswa unik serta fase dari Kontrol PKL.',
+            'status' => 'stable', 'priority' => 'P2', 'order' => 6,
+            'summary' => 'Temuan audit Dashboard ditutup: filter tag tahun, siswa unik, dan rekap fase dari roster per jurusan sesuai hak akses.',
+            'working' => 'Ringkasan jurnal, sertifikat, mitra dan penempatan mengikuti tahun terpilih. Koordinator/admin melihat roster sekolah termasuk siswa tanpa penempatan; guru hanya siswa dampingan, siswa hanya dirinya. Fase memakai tanggal WIB.',
+            'issues' => [],
+            'next' => 'Evaluasi angka dengan roster sekolah nyata. Masuk sekolah adalah fase tanggal, bukan verifikasi kehadiran. Stabil untuk cakupan audit, bukan klaim seluruh UAT selesai.',
         ],
         'timeline' => [
             'name' => 'Timeline PKL', 'routes' => ['timeline.*'],

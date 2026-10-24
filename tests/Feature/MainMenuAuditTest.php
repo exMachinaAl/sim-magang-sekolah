@@ -30,14 +30,14 @@ class MainMenuAuditTest extends TestCase
             'assessment-templates.index' => 'assessments',
         ] as $route => $module) {
             $response = $this->get(route($route))->assertOk();
-            if (in_array($module,['timeline','monitoring','assessments'],true)) {
+            if (in_array($module,['dashboard','timeline','monitoring','assessments'],true)) {
                 $response->assertDontSee('data-module-health=',false);
             } else {
                 $response->assertSee('data-module-health="'.$module.'"', false)
                     ->assertSee(config('main_menu_health.modules.'.$module.'.summary'))
                     ->assertSee('Sudah terhubung:')->assertSee('Perbaikan berikutnya:');
             }
-            $this->assertSame(3, substr_count($response->getContent(), 'class="module-health-badge '));
+            $this->assertSame(2, substr_count($response->getContent(), 'class="module-health-badge '));
             $response->assertDontSee('aria-label="Timeline PKL: UNSTABLE"',false);
         }
     }
@@ -48,11 +48,11 @@ class MainMenuAuditTest extends TestCase
         foreach (['students.index', 'internships.index', 'placements.index', 'periods.index', 'companies.index', 'reports.index'] as $route) {
             $this->get(route($route))->assertOk()->assertDontSee('data-module-health=', false);
         }
-        $this->get(route('reports.index'))->assertSee('RED FLAG — modul belum sepenuhnya sinkron');
+        $this->get(route('reports.index'))->assertDontSee('RED FLAG — modul belum sepenuhnya sinkron');
         $this->actingAs(User::where('role', 'siswa')->firstOrFail());
         foreach (['dashboard', 'timeline.index', 'journals.index', 'assessments.index', 'certificates.index'] as $route) {
             $response=$this->get(route($route))->assertOk()->assertDontSee('Periksa sumber jadwal di Kontrol PKL');
-            if (in_array($route,['timeline.index','assessments.index'],true)) $response->assertDontSee('data-module-health=',false);
+            if (in_array($route,['dashboard','timeline.index','assessments.index'],true)) $response->assertDontSee('data-module-health=',false);
             else $response->assertSee('data-module-health=', false);
         }
         $this->get(route('monitoring.index'))->assertForbidden();
@@ -60,7 +60,7 @@ class MainMenuAuditTest extends TestCase
         $this->actingAs(User::where('role', 'guru')->firstOrFail())->get(route('monitoring.index'))
             ->assertOk()->assertDontSee('data-module-health="monitoring"', false);
         $this->actingAs(User::where('role', 'admin')->firstOrFail())->get(route('dashboard'))
-            ->assertOk()->assertSee('data-module-health="dashboard"', false);
+            ->assertOk()->assertDontSee('data-module-health="dashboard"', false);
     }
 
     public function test_audit_counts_are_scoped_read_only_and_do_not_mark_missing_placement_as_corruption(): void

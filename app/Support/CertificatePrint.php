@@ -86,8 +86,14 @@ class CertificatePrint
             if (abs($calculated-(float)$a->calculated_score)>0.005) self::fail('Hasil hitung 80/20 tidak cocok dengan penilaian disahkan; periksa sumber.');
         }
         foreach ($values as $value) if (str_contains((string)$value,'${')) self::fail('Data cetak mengandung penanda template yang belum terisi.');
-        return ['template_id'=>$template->id,'template_name'=>$template->name,'front_variant'=>$template->front_variant,
+        $result=['template_id'=>$template->id,'template_name'=>$template->name,'front_variant'=>$template->front_variant,
             'back_variant'=>$template->back_variant,'front_hash'=>$template->front_hash,'back_hash'=>$template->back_hash,
             'score_mapping'=>$mapping,'values'=>$values];
+        // Add only for the new renderer: old DOCX/builtin snapshots remain comparable unchanged.
+        if ($template->renderer()==='pdf_background') $result['pdf_background']=[
+            'front_hash'=>$template->front_pdf_hash,'back_hash'=>$template->back_pdf_hash,
+            'layout'=>app(CertificatePdfBackground::class)->validateLayout($template->pdf_layout??[]),
+        ];
+        return $result;
     }
 }
