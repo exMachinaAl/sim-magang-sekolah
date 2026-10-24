@@ -17,7 +17,7 @@
 <div class="card"><h2>{{ $mentor->name }} · {{ $mentor->company->name }}</h2><p>{{ $mentor->placements_count }} penempatan siswa · {{ $mentor->is_active?'Aktif':'Nonaktif' }}</p>
 <div class="header-actions">
 @if($mentor->is_active)<form method="POST" action="{{ route('journals.mentors.invite',$mentor) }}">@csrf<button class="btn btn-primary">Buat QR daftar perangkat</button></form>@endif
-<form method="POST" action="{{ route('journals.mentors.toggle',$mentor) }}">@csrf @method('PUT')<button class="btn btn-secondary">{{ $mentor->is_active?'Nonaktifkan & cabut perangkat':'Aktifkan kembali' }}</button></form>
+<form method="POST" action="{{ route('journals.mentors.toggle',$mentor) }}">@csrf @method('PUT')<input type="hidden" name="is_active" value="{{ $mentor->is_active ? 0 : 1 }}"><input type="hidden" name="expected_active" value="{{ $mentor->is_active ? 1 : 0 }}"><button class="btn btn-secondary">{{ $mentor->is_active?'Nonaktifkan & cabut perangkat':'Aktifkan kembali' }}</button></form>
 </div>
 <details><summary>Atur penugasan siswa</summary>
 <p>Cari perusahaan/nama/NIS pada formulir atas. Pilih salah satu hasil untuk menambah atau melepaskan penugasan.</p>

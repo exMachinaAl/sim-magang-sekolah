@@ -105,7 +105,7 @@ class InternshipRoster extends Model
             return 'not_internship';
         }
 
-        if (! $this->internship_starts_at || ! $this->internship_ends_at) {
+        if (! $this->internship_starts_at || ! $this->internship_ends_at || $this->internship_ends_at->lt($this->internship_starts_at)) {
             return 'unscheduled';
         }
 

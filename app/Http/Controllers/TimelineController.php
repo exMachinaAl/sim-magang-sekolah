@@ -2,139 +2,106 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{InternshipPeriod, InternshipRoster, Placement, TimelineEvent, User};
+use App\Models\{InternshipPeriod, InternshipRoster, TimelineEvent, User};
 use App\Support\Access;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class TimelineController
 {
     public function index(Request $request)
     {
-        $user = $request->user();
-        $allowedPeriodIds = Access::placements($user)->select('internship_period_id');
-        $periods = InternshipPeriod::query()
-            ->when(! $user->isRole('admin', 'koordinator'), fn ($query) => $query->whereIn('id', $allowedPeriodIds))
-            ->latest()->get();
-        $chosen = $request->integer('period_id') ?: $periods->first()?->id;
-        abort_if($chosen && ! $periods->contains('id', $chosen), 403);
-
-        $placements = Access::placements($user)
-            ->with(['student.user', 'teacher', 'company', 'period', 'roster.scheduleBatch.creator', 'roster.updater'])
-            ->where('internship_period_id', $chosen ?? 0)
-            ->orderBy('id')->get();
-        $allRows = $placements->map(fn (Placement $placement) => ['placement'=>$placement, 'schedule'=>$this->dateSchedule($placement, $placement->roster)]);
-
-        $teachers = User::query()->whereIn('id', $placements->pluck('teacher_id')->unique())
-            ->orderBy('name')->get(['id', 'name', 'nip']);
-        if ($placements->contains(fn ($p) => $p->teacher_id === null)) {
-            $teachers->push((new User())->forceFill(['id'=>0,'name'=>'Tanpa guru pendamping / Koordinator','nip'=>null]));
+        $data=$request->validate([
+            'period_id'=>'nullable|integer|min:1','roster_id'=>'nullable|integer|min:1',
+            'placement_id'=>'nullable|integer|min:1','teacher_id'=>'nullable|integer|min:0',
+            'major'=>'nullable|string|max:150','q'=>'nullable|string|max:100',
+            'students_page'=>'nullable|integer|min:1','majors_page'=>'nullable|integer|min:1',
+        ]);
+        $user=$request->user(); $search=trim($data['q']??'');
+        $today=now('Asia/Jakarta')->startOfDay();
+        $base=Access::rosters($user);
+        $selectedRoster=null;
+        if ($request->filled('roster_id')) $selectedRoster=(clone $base)->findOrFail($data['roster_id']);
+        // Compatibility with existing links, without requiring placement for a timeline.
+        if ($request->filled('placement_id')) {
+            $placement=Access::placement($user,$data['placement_id']);
+            abort_unless($placement->internship_roster_id,404);
+            $linked=(clone $base)->findOrFail($placement->internship_roster_id);
+            abort_if((int)$linked->student_id!==(int)$placement->student_id || (int)$linked->internship_period_id!==(int)$placement->internship_period_id,404);
+            abort_if($selectedRoster && $selectedRoster->id!==$linked->id,404);
+            $selectedRoster=$linked;
         }
-        $teacherGroups = $teachers->map(function (User $teacher) use ($allRows) {
-            $rows = $allRows->filter(fn ($row) => (int)$row['placement']->teacher_id === (int)$teacher->id);
-            return [
-                'teacher' => $teacher,
-                'students_count' => $rows->count(),
-                'pkl_count' => $rows->where('schedule.state', 'pkl')->count(),
-                'school_count' => $rows->where('schedule.state', 'school')->count(),
-                'unscheduled_count' => $rows->where('schedule.state', 'unscheduled')->count(),
-            ];
-        })->values();
-
-        $selectedTeacher = null;
-        $selectedStudentRow = null;
-        if ($request->integer('placement_id')) {
-            $selectedStudentRow = $allRows->first(fn ($row) => $row['placement']->id === $request->integer('placement_id'));
-            abort_unless($selectedStudentRow, 403);
-            $selectedTeacher = $teachers->firstWhere('id', $selectedStudentRow['placement']->teacher_id ?? 0);
-        } elseif ($user->isRole('siswa')) {
-            $selectedStudentRow = $allRows->first();
-            $selectedTeacher = $selectedStudentRow
-                ? $teachers->firstWhere('id', $selectedStudentRow['placement']->teacher_id ?? 0)
-                : null;
-        } elseif ($user->isRole('guru')) {
-            $selectedTeacher = $teachers->firstWhere('id', $user->id);
-        } elseif ($request->filled('teacher_id')) {
-            $selectedTeacher = $teachers->firstWhere('id', $request->integer('teacher_id'));
-            abort_unless($selectedTeacher, 403);
-        }
-
-        $teacherStudentRows = $selectedTeacher
-            ? $allRows->filter(fn ($row) => (int)$row['placement']->teacher_id === (int)$selectedTeacher->id)->values()
-            : collect();
-        $studentRows = $this->paginateCollection($teacherStudentRows, 20, 'students_page', $request);
-        $teacherDirectory = $this->paginateCollection($teacherGroups, 15, 'teachers_page', $request);
-
-        $search = trim((string) $request->q);
-        $searchTeachers = collect();
-        $searchStudents = collect();
-        if ($search !== '') {
-            $needle = mb_strtolower($search);
-            if ($user->isRole('admin', 'koordinator')) {
-                $searchTeachers = $teacherGroups->filter(function ($group) use ($needle) {
-                    $teacher = $group['teacher'];
-                    return str_contains(mb_strtolower($teacher->name), $needle)
-                        || ($teacher->nip && str_contains(mb_strtolower($teacher->nip), $needle));
-                })->take(10)->values();
+        $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))
+            ->orderByDesc('academic_year')->orderByDesc('id')->get();
+        $chosen=(int)($data['period_id']??$selectedRoster?->internship_period_id
+            ??$periods->firstWhere('academic_year',InternshipRoster::currentAcademicYear())?->id??$periods->first()?->id);
+        abort_if($chosen && !$periods->contains('id',$chosen),404);
+        abort_if($selectedRoster && (int)$selectedRoster->internship_period_id!==$chosen,404);
+        $base->where('internship_period_id',$chosen);
+        $selectedTeacher=null;
+        if ($request->filled('teacher_id')) {
+            $teacherId=(int)$data['teacher_id'];
+            abort_if($user->isRole('guru') && $teacherId!==$user->id,404);
+            if ($teacherId===0) {
+                $base->where(fn($q)=>$q->whereDoesntHave('placement')->orWhereHas('placement',fn($p)=>$p->whereNull('teacher_id')));
+                $selectedTeacher=(new User())->forceFill(['id'=>0,'name'=>'Tanpa guru pendamping','nip'=>null]);
+            } else {
+                $base->whereHas('placement',fn($p)=>$p->where('teacher_id',$teacherId));
+                abort_unless((clone $base)->exists(),404);
+                $selectedTeacher=User::whereKey($teacherId)->where('role','guru')->firstOrFail();
             }
-            $searchStudents = $allRows->filter(function ($row) use ($needle) {
-                $placement = $row['placement'];
-                return str_contains(mb_strtolower($placement->student->user->name), $needle)
-                    || str_contains(mb_strtolower($placement->student->nis), $needle)
-                    || ($placement->student->nisn && str_contains(mb_strtolower($placement->student->nisn), $needle));
-            })->take(20)->values();
+            abort_if($selectedRoster && !(clone $base)->whereKey($selectedRoster->id)->exists(),404);
         }
+        if ($user->isRole('siswa') && !$selectedRoster) $selectedRoster=(clone $base)->orderBy('id')->first();
+        $selectedMajor=$selectedRoster?->major??($data['major']??null);
 
-        return view('timeline.index', compact(
-            'periods', 'chosen', 'teachers', 'teacherDirectory', 'selectedTeacher', 'selectedStudentRow',
-            'studentRows', 'search', 'searchTeachers', 'searchStudents'
-        ));
+        // Count phases in SQL, without hydrating the school's entire roster.
+        $day=$today->toDateString();
+        $phase="CASE WHEN internship_status = 'not_internship' THEN 'not_internship'
+            WHEN internship_starts_at IS NULL OR internship_ends_at IS NULL OR internship_ends_at < internship_starts_at THEN 'unscheduled'
+            WHEN DATE(internship_starts_at) > ? THEN 'scheduled'
+            WHEN DATE(internship_ends_at) >= ? THEN 'pkl' ELSE 'school' END";
+        $groups=(clone $base)->select('major')->selectRaw('COUNT(*) AS total');
+        foreach (array_keys(InternshipRoster::lifecycleLabels()) as $state) {
+            $groups->selectRaw("SUM(CASE WHEN ($phase) = ? THEN 1 ELSE 0 END) AS {$state}_count",[$day,$day,$state]);
+        }
+        $majorDirectory=$groups->when($search!=='',fn($q)=>$q->where('major','like','%'.$search.'%'))
+            ->groupBy('major')->orderBy('major')->paginate(12,['*'],'majors_page')->withQueryString();
+
+        $showStudents=!$selectedRoster && ($selectedMajor!==null || $search!=='' || $selectedTeacher || $user->isRole('guru'));
+        $students=(clone $base)->when($selectedMajor!==null,fn($q)=>$q->where('major',$selectedMajor))
+            ->when(!$showStudents,fn($q)=>$q->whereRaw('1=0'));
+        if ($search!=='') {
+            $like='%'.$search.'%';
+            $students->where(fn($q)=>$q->where('name','like',$like)->orWhere('nis','like',$like)->orWhere('nisn','like',$like)
+                ->orWhere('major','like',$like)
+                ->orWhereHas('student',fn($s)=>$s->where('nis','like',$like)->orWhere('nisn','like',$like)
+                    ->orWhereHas('user',fn($u)=>$u->where('name','like',$like)))
+                ->orWhereHas('placement.teacher',fn($t)=>$t->where('name','like',$like)->orWhere('nip','like',$like)));
+        }
+        $studentRows=$students->with(['student.user','placement.company','placement.teacher'])
+            ->orderBy('major')->orderBy('class_name')->orderBy('name')->orderBy('id')
+            ->paginate(20,['*'],'students_page')->withQueryString();
+        $selectedStudentRow=null;
+        if ($selectedRoster) {
+            $selectedRoster->load(['student.user','placement.company','placement.teacher','updater']);
+            $state=$selectedRoster->lifecycleState($today);
+            $selectedStudentRow=['roster'=>$selectedRoster,'placement'=>$selectedRoster->placement,'schedule'=>[
+                'starts_at'=>$selectedRoster->internship_starts_at,'ends_at'=>$selectedRoster->internship_ends_at,
+                'return_at'=>in_array($state,['not_internship','unscheduled'])?null:$selectedRoster->returnToSchoolDate(),
+                'state'=>$state,'label'=>InternshipRoster::lifecycleLabels()[$state],
+                'source'=>!$selectedRoster->schedule_source && !in_array($state,['unscheduled','not_internship']) ? 'Kontrol PKL (sumber lama)' : $selectedRoster->scheduleSourceLabel(),
+                'editor'=>$selectedRoster->updater?->name,'editor_id'=>$selectedRoster->updated_by,
+            ]];
+        }
+        return view('timeline.index',compact('periods','chosen','majorDirectory','selectedMajor','selectedTeacher',
+            'selectedStudentRow','studentRows','showStudents','search','today'));
     }
 
-    public function update(Request $request, TimelineEvent $event)
-    {
-        return $this->retired();
-    }
-
-    public function store(Request $request)
-    {
-        return $this->retired();
-    }
-
-    public function complete(Request $request, TimelineEvent $event)
-    {
-        return $this->retired();
-    }
-
+    public function update(Request $request, TimelineEvent $event) { return $this->retired(); }
+    public function store(Request $request) { return $this->retired(); }
+    public function complete(Request $request, TimelineEvent $event) { return $this->retired(); }
     private function retired(): never
     {
-        abort(410, 'Tahapan dan konfirmasi manual telah digantikan oleh jadwal PKL berbasis tanggal.');
-    }
-
-    private function dateSchedule(Placement $placement, ?InternshipRoster $roster): array
-    {
-        $startsAt = $roster?->internship_starts_at;
-        $endsAt = $roster?->internship_ends_at;
-        $state = $roster?->lifecycleState();
-        return [
-            'roster' => $roster,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'return_at' => $endsAt?->copy()->addDay(),
-            'state' => $state ?: 'unscheduled',
-            'label' => InternshipRoster::lifecycleLabels()[$state] ?? 'Belum dijadwalkan',
-            'source' => $roster?->scheduleSourceLabel() ?? 'Roster belum terhubung',
-            'editor' => $roster?->updater?->name,
-        ];
-    }
-
-    private function paginateCollection(Collection $items, int $perPage, string $pageName, Request $request): LengthAwarePaginator
-    {
-        $page = max(1, $request->integer($pageName, 1));
-        return new LengthAwarePaginator(
-            $items->forPage($page, $perPage)->values(), $items->count(), $perPage, $page,
-            ['path' => $request->url(), 'query' => $request->query(), 'pageName' => $pageName]
-        );
+        abort(410,'Tahapan dan konfirmasi manual telah digantikan oleh jadwal PKL berbasis tanggal.');
     }
 }

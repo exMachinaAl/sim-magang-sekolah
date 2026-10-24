@@ -81,7 +81,7 @@ class AssessmentTemplateTest extends TestCase
         $this->assertSame('Melakukan crimping dan pengujian kabel UTP.',$assessment->fresh()->template_snapshot['fields'][0]['description']);
         $this->post(route('certificates.create'),['placement_id'=>$placement->id])->assertSessionHasNoErrors();
         $certificate=Certificate::firstOrFail();
-        $this->put(route('certificates.approve',$certificate),['decision'=>'approved'])->assertRedirect();
+        $this->put(route('certificates.approve',$certificate),['decision'=>'approved','version'=>$certificate->version])->assertSessionHasNoErrors()->assertRedirect();
         $this->get(route('certificates.pdf',$certificate))->assertOk()->assertHeader('content-type','application/pdf');
         $html=view('certificates.template-pdf',['certificate'=>$certificate->fresh(),'startsAt'=>$placement->roster->internship_starts_at,'endsAt'=>$placement->roster->internship_ends_at])->render();
         $this->assertStringContainsString('Melakukan crimping',$html);

@@ -56,7 +56,8 @@ class MainMenuAudit
                 'certificates_in_year' => (clone $certificates)->count(),
                 'certificates_missing_roster_dates' => (clone $certificates)->whereDoesntHave('placement.roster', fn ($q) => $q
                     ->whereNotNull('internship_starts_at')->whereNotNull('internship_ends_at'))->count(),
-                'issued_certificates_live_data' => (clone $certificates)->whereNotNull('issued_at')->count(),
+                'issued_certificates_live_data' => (clone $certificates)->whereNotNull('issued_at')->whereDoesntHave('documents',fn($q)=>$q
+                    ->whereColumn('certificate_documents.version','certificates.version')->whereNotNull('issued_at'))->count(),
                 // Legacy placements without an academic-year tag cannot be attributed
                 // to the selected year: expose them separately instead of hiding them.
                 'placements_without_year_tag_all_years' => Placement::whereDoesntHave('period', fn ($q) => $q->whereNotNull('academic_year'))->count(),

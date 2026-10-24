@@ -4,7 +4,7 @@
 </style></head><body>
 @php $assessment=$certificate->placement->assessment; $snapshot=$assessment->template_snapshot; $placement=$certificate->placement; @endphp
 <section class="front">
-<h2>SMK NEGERI 1 CERME GRESIK</h2><h1>{{ $snapshot['certificate_heading'] }}</h1><p>Nomor: {{ $certificate->number }}</p>
+<h2>SMK NEGERI 1 CERME GRESIK</h2><h1>{{ $snapshot['certificate_heading'] }}</h1><p>Nomor: {{ $certificate->number }} · Versi {{ $certificate->version }}</p>
 <p>Diberikan kepada</p><div class="name">{{ $placement->student->user->name }}</div><p>NIS {{ $placement->student->nis }} · {{ $placement->student->class_name }}</p><p>{{ $snapshot['major'] }}</p>
 <div class="statement">{{ $snapshot['certificate_statement'] }}</div>
 <p>Tempat PKL: <strong>{{ $placement->company->name }}</strong></p><p>{{ $startsAt?->locale('id')->translatedFormat('d F Y') }} – {{ $endsAt?->locale('id')->translatedFormat('d F Y') }}</p>

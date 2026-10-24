@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Assessment, AssessmentTemplate, Placement};
+use App\Models\{Assessment, AssessmentTemplate, InternshipPeriod, InternshipRoster, Placement};
 use App\Support\{Access, Audit};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,17 +12,25 @@ class AssessmentController
 {
     public function index(Request $request)
     {
-        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $filters=$request->validate(['q'=>['nullable','string','max:100'], 'period_id'=>'nullable|integer|min:1',
+            'major'=>'nullable|string|max:150','placement_id'=>'nullable|integer|min:1','template_id'=>'nullable|integer|min:1',
+            'page'=>'nullable|integer|min:1','search_page'=>'nullable|integer|min:1']);
         $search = trim((string) $request->input('q', ''));
         $user = $request->user();
-        $items = Assessment::with(['placement.student.user', 'placement.company', 'scores.criterion', 'assessor'])
-            ->whereIn('placement_id', Access::placements($user)->select('id'))
+        $base=Access::placements($user);
+        $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))->orderByDesc('academic_year')->get();
+        $majors=InternshipRoster::whereIn('id',(clone $base)->select('internship_roster_id'))->select('major')->distinct()->orderBy('major')->pluck('major');
+        $scope=(clone $base)->when($filters['period_id']??null,fn($q,$id)=>$q->where('internship_period_id',$id))
+            ->when($filters['major']??null,fn($q,$major)=>$q->whereHas('roster',fn($r)=>$r->where('major',$major)))
+            ->when($search!=='',fn($q)=>$q->whereHas('student',fn($s)=>$s->where(function($s) use($search) {
+                $s->where('nis','like','%'.$search.'%')->orWhereHas('user',fn($u)=>$u->where('name','like','%'.$search.'%'));
+            })));
+        $items = Assessment::with(['placement.student.user', 'placement.company','placement.roster','placement.period', 'scores.criterion', 'assessor'])
+            ->withCount('evidence')->whereIn('placement_id',(clone $scope)->select('id'))
             ->when($user->isRole('siswa'), fn ($q) => $q->where('status', 'approved'))
-            ->latest()->paginate(15);
+            ->latest('id')->paginate(15)->withQueryString();
         $placements = $user->isRole('koordinator') && $search !== ''
-            ? Access::placements($user)->with(['student.user', 'period', 'company'])
-                ->whereHas('student', fn ($query) => $query->where('nis', 'like', '%'.$search.'%')
-                    ->orWhereHas('user', fn ($users) => $users->where('name', 'like', '%'.$search.'%')))
+            ? (clone $scope)->with(['student.user', 'period', 'company','roster'])
                 ->latest()->paginate(10, ['*'], 'search_page')->withQueryString() : collect();
         $selectedPlacement = null;
         $selectedTemplate = null;
@@ -30,16 +38,16 @@ class AssessmentController
         $templates = collect();
         if ($user->isRole('koordinator') && $request->integer('placement_id')) {
             $selectedPlacement = Access::placement($user, $request->integer('placement_id'));
-            $selectedPlacement->load(['student.user', 'company', 'assessment']);
+            $selectedPlacement->load(['student.user', 'company', 'assessment','roster','period']);
             $assessment = $selectedPlacement->assessment;
-            $templates = AssessmentTemplate::where('major', $selectedPlacement->roster?->major ?? $selectedPlacement->student->major)->where('is_active', true)->latest()->get();
+            $templates = $selectedPlacement->roster ? AssessmentTemplate::where('major', $selectedPlacement->roster->major)->where('is_active', true)->latest()->get() : collect();
             if ($request->integer('template_id')) {
                 $selectedTemplate = $templates->firstWhere('id', $request->integer('template_id'));
                 abort_unless($selectedTemplate, 422, 'Template tidak sesuai jurusan atau sudah dinonaktifkan.');
             }
         }
         $snapshot = $assessment?->template_snapshot ?: $selectedTemplate?->snapshot();
-        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'assessment', 'templates', 'snapshot', 'search'));
+        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'assessment', 'templates', 'snapshot', 'search','periods','majors'));
     }
 
     public function store(Request $request)
@@ -73,7 +81,11 @@ class AssessmentController
                 $snapshot = $existing->template_snapshot;
             } else {
                 $template = AssessmentTemplate::whereKey($data['template_id'])->where('is_active', true)->firstOrFail();
-                abort_unless($template->major === ($placement->roster?->major ?? $placement->student->major), 422, 'Template tidak sesuai jurusan siswa pada tahun ajaran penempatan.');
+                if (!$placement->roster || (int)$placement->roster->student_id!==(int)$placement->student_id
+                    || (int)$placement->roster->internship_period_id!==(int)$placement->internship_period_id) {
+                    throw ValidationException::withMessages(['placement_id'=>'Hubungan roster/penempatan belum sesuai. Perbaiki melalui manajemen sebelum membuat penilaian.']);
+                }
+                abort_unless($template->major === $placement->roster->major, 422, 'Template tidak sesuai jurusan siswa pada tahun ajaran penempatan.');
                 $snapshot = $template->snapshot();
             }
             $rules = [];

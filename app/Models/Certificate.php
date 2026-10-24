@@ -2,8 +2,10 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 class Certificate extends Model {
- protected $fillable=['placement_id','number','version','status','pickup_at','pickup_location','pickup_requirements','issued_at'];
- protected function casts():array{return ['pickup_at'=>'datetime','issued_at'=>'datetime'];}
+ protected $fillable=['placement_id','number','version','status','pickup_at','pickup_location','pickup_requirements','issued_at','print_template_id','print_options'];
+ protected function casts():array{return ['pickup_at'=>'datetime','issued_at'=>'datetime','version'=>'integer','print_options'=>'array'];}
+ public function printTemplate(){return $this->belongsTo(CertificatePrintTemplate::class,'print_template_id');}
+ public function documents(){return $this->hasMany(CertificateDocument::class);}
  public function placement(){return $this->belongsTo(Placement::class);}
  public function approvals(){return $this->hasMany(CertificateApproval::class);}
  public function approvalEvents(){return $this->hasMany(CertificateApprovalEvent::class);}

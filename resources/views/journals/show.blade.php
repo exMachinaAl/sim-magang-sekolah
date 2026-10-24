@@ -14,17 +14,17 @@
 <label>Dari tanggal<input type="date" name="date_from"></label><label>Sampai tanggal<input type="date" name="date_to"></label>
 <button class="btn btn-primary">Unduh Excel · 6 entri/lembar</button>
 <a href="{{ route('journals.pdf',['placement_id'=>$placement->id]) }}" class="btn btn-secondary">Rekap PDF</a>
-</form><p class="small muted">Excel mengikuti template mingguan. Draf tidak diekspor; nilai belum divalidasi tetap ditandai. Foto tidak dicetak.</p>
+</form><p class="small muted">Excel mengikuti template mingguan. Draf tidak diekspor; nilai belum divalidasi tetap ditandai. Foto tidak dicetak. Untuk narasi panjang, cetak juga lembar Rincian yang dirujuk pada tabel.</p>
 </div>
 @if(auth()->user()->isRole('siswa'))
 @if($canWrite)
 <div class="card" id="journal-form">
-<h2 id="journal-form-title">Tulis Jurnal Kegiatan</h2>
+<h2 id="journal-form-title">{{ old('revision',0) > 0 ? 'Edit jurnal '.old('activity_date') : 'Tulis Jurnal Kegiatan' }}</h2>
 <p>Satu ringkasan per tanggal; beberapa kegiatan hari yang sama dapat ditulis bersama. Tanggal kegiatan harus dalam jadwal PKL, tetapi pencatatan dan scan boleh dilakukan belakangan.</p>
 <form method="POST" action="{{ route('journals.store') }}" enctype="multipart/form-data" id="journal-editor">@csrf
 <input type="hidden" name="placement_id" value="{{ $placement->id }}"><input id="journal-revision" type="hidden" name="revision" value="{{ old('revision',0) }}">
 <div class="form-grid">
-<label>Tanggal kegiatan<input id="journal-date" type="date" name="activity_date" required value="{{ old('activity_date',now()->toDateString()) }}" max="{{ now()->toDateString() }}"></label>
+<label>Tanggal kegiatan<input id="journal-date" type="date" name="activity_date" required value="{{ old('activity_date',now()->toDateString()) }}" max="{{ now()->toDateString() }}" @readonly(old('revision',0) > 0)></label>
 <label>Ruang kerja<input id="journal-work_area" name="work_area" maxlength="150" value="{{ old('work_area') }}"></label>
 <label>Mulai<input id="journal-starts_time" type="time" name="starts_time" value="{{ old('starts_time') }}"></label>
 <label>Selesai<input id="journal-ends_time" type="time" name="ends_time" value="{{ old('ends_time') }}"></label>
@@ -91,6 +91,8 @@ document.querySelectorAll('[data-edit-journal]').forEach(button=>button.addEvent
 }));
 document.getElementById('journal-new').addEventListener('click',()=>{
  document.getElementById('journal-editor').reset(); document.getElementById('journal-revision').value=0;
+ ['activity','outcome','obstacles','work_area','starts_time','ends_time','equipment_notes','industry_score'].forEach(key=>document.getElementById('journal-'+key).value='');
+ document.getElementById('journal-date').value=@json(now()->toDateString());
  document.getElementById('journal-date').readOnly=false; document.getElementById('journal-form-title').textContent='Tulis Jurnal Kegiatan';
 });
 </script>

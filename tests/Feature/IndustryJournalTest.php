@@ -65,6 +65,9 @@ class IndustryJournalTest extends TestCase
     {
         $url=$this->actingAs($this->coordinator)->post(route('journals.mentors.invite',$this->mentor))->assertOk()->viewData('url');
         auth()->logout();
+        $this->head($url)->assertOk();
+        $this->assertDatabaseCount('industry_devices',0);
+        $this->assertNull(DB::table('industry_device_invites')->first()->used_at);
         $this->get($url)->assertOk()->assertSee('scan-form');
         $this->assertDatabaseCount('industry_devices',0);
         $response=$this->post($url)->assertRedirect(route('industry.home'))->assertCookie('industry_device');
@@ -83,6 +86,9 @@ class IndustryJournalTest extends TestCase
     {
         $journal=$this->journal(); $url=$this->qr($journal); $secret=$this->device();
         auth()->logout();
+        $this->withCookie('industry_device',$secret)->head($url)->assertOk();
+        $this->assertDatabaseCount('journal_industry_validations',0);
+        $this->assertNull(DB::table('journal_scan_tokens')->first()->used_at);
         $this->withCookie('industry_device',$secret)->get($url)->assertOk()->assertSee('88.00');
         $this->assertDatabaseCount('journal_industry_validations',0); // GET/prefetch must not write.
         $this->withCookie('industry_device',$secret)->post($url)->assertRedirect(route('industry.home'));
@@ -176,7 +182,17 @@ class IndustryJournalTest extends TestCase
             $this->assertStringNotContainsString('{{',(string)$value);
         }
         $response=$this->actingAs($this->placement->student->user)->get(route('journals.excel',$this->placement))->assertOk();
-        $this->assertStringStartsWith('PK',$response->streamedContent());
+        $bytes=$response->streamedContent();
+        $this->assertStringStartsWith('PK',$bytes);
+        $file=tmpfile();
+        try {
+            fwrite($file,$bytes);
+            $downloaded=\PhpOffice\PhpSpreadsheet\IOFactory::load(stream_get_meta_data($file)['uri']);
+            $this->assertSame(3,$downloaded->getSheetCount());
+            $this->assertEquals(88.25,$downloaded->getSheet(0)->getCell('I13')->getValue());
+            $this->assertSame(DataType::TYPE_STRING,$downloaded->getSheet(0)->getCell('E9')->getDataType());
+            $downloaded->disconnectWorksheets();
+        } finally { fclose($file); }
         $book->disconnectWorksheets();
     }
 
@@ -201,11 +217,14 @@ class IndustryJournalTest extends TestCase
         $this->get($old)->assertGone();
         $this->get($new)->assertOk();
         $secret=$this->device();
-        $this->put(route('journals.mentors.toggle',$this->mentor))->assertRedirect();
+        $this->put(route('journals.mentors.toggle',$this->mentor),['is_active'=>0,'expected_active'=>1])->assertRedirect();
         $this->get($new)->assertGone();
         $this->assertFalse($this->mentor->fresh()->is_active);
         $this->assertNotNull(IndustryDevice::first()->revoked_at);
-        $this->put(route('journals.mentors.toggle',$this->mentor))->assertRedirect();
+        $this->put(route('journals.mentors.toggle',$this->mentor),['is_active'=>0,'expected_active'=>1])->assertRedirect();
+        $this->assertFalse($this->mentor->fresh()->is_active); // Retried disable must not reactivate.
+        $this->assertSame(1,DB::table('audit_logs')->where('action','industry_mentor.toggled')->count());
+        $this->put(route('journals.mentors.toggle',$this->mentor),['is_active'=>1,'expected_active'=>0])->assertRedirect();
         $this->withCookie('industry_device',$secret)->get(route('industry.home'))->assertNotFound();
     }
 
@@ -244,5 +263,66 @@ class IndustryJournalTest extends TestCase
             $journal=new Journal(['industry_score'=>$score]);
             $this->assertSame($category,$journal->scoreCategory());
         }
+    }
+
+    public function test_one_sided_date_filters_work_and_invalid_dates_are_rejected_consistently(): void
+    {
+        $this->journal();
+        $this->actingAs($this->placement->student->user);
+        $routes=[route('journals.index'),route('journals.pdf'),route('journals.excel',$this->placement)];
+        foreach ($routes as $url) {
+            foreach ([['date_from'=>'','date_to'=>'2026-10-21'],['date_from'=>'2026-10-21']] as $query) {
+                $this->get($url.'?'.http_build_query($query))->assertOk()->assertSessionHasNoErrors();
+            }
+            $this->get($url.'?date_from=2026-10-22&date_to=2026-10-21')->assertSessionHasErrors('date_to');
+            $this->get($url.'?date_to=2026-02-30')->assertSessionHasErrors('date_to');
+            $this->get($url.'?date_from=tomorrow')->assertSessionHasErrors('date_from');
+        }
+    }
+
+    public function test_kiosk_errors_are_actionable_private_and_do_not_expose_debug_details(): void
+    {
+        config(['app.debug'=>true]);
+        $this->get(route('industry.home'))->assertForbidden()->assertSee('Browser belum dipercaya')
+            ->assertHeader('Referrer-Policy','no-referrer')->assertHeader('X-Frame-Options','DENY');
+        \Illuminate\Support\Facades\Route::get('/industry/test-error',fn()=>throw new \RuntimeException('SECRET_SQL_TOKEN'));
+        $response=$this->get('/industry/test-error')->assertStatus(500)->assertSee('Coba lagi nanti')
+            ->assertDontSee('SECRET_SQL_TOKEN')->assertHeader('X-Robots-Tag','noindex, nofollow');
+        $this->assertStringContainsString('no-store',$response->headers->get('Cache-Control'));
+        \Illuminate\Support\Facades\Route::post('/industry/test-csrf',fn()=>abort(419));
+        $this->post('/industry/test-csrf')->assertStatus(419)->assertSee('Sesi browser berakhir');
+    }
+
+    public function test_long_narratives_get_printable_continuations_without_losing_raw_values(): void
+    {
+        $journal=$this->journal();
+        $activity=str_repeat('Kegiatan lengkap siswa. ',200).'PENUTUP KEGIATAN';
+        $notes=str_repeat('Rincian bahan. ',150).'PENUTUP BAHAN';
+        $journal->update(['activity'=>$activity,'equipment_notes'=>$notes]);
+        $book=app(JournalWorkbook::class)->build($this->placement,'2026-10-21','2026-10-21');
+        $this->assertStringContainsString('Rincian '.$journal->id,$book->getSheet(0)->getCell('E9')->getValue());
+        $this->assertSame($activity,$book->getSheetByName('Data Laravel')->getCell('E2')->getValue());
+        $this->assertSame($notes,$book->getSheetByName('Data Laravel')->getCell('F2')->getValue());
+        $detail=$book->getSheetByName('Rincian '.$journal->id);
+        $this->assertNotNull($detail);
+        $text=implode('',array_column($detail->toArray(),0));
+        $this->assertStringContainsString($activity,$text);
+        $this->assertStringContainsString($notes,$text);
+        $this->assertSame(0,$detail->getPageSetup()->getFitToHeight());
+        $book->disconnectWorksheets();
+    }
+
+    public function test_pdf_refuses_silent_truncation_and_schedule_corrections_block_out_of_range_entries(): void
+    {
+        $rows=[];
+        for($i=0;$i<301;$i++) $rows[]=['placement_id'=>$this->placement->id,'activity_date'=>now()->subDays($i+500)->toDateString(),
+            'activity'=>'Kegiatan arsip','outcome'=>'','status'=>'submitted','created_at'=>now(),'updated_at'=>now()];
+        DB::table('journals')->insert($rows);
+        $this->actingAs($this->placement->student->user)->get(route('journals.pdf',['placement_id'=>$this->placement->id]))
+            ->assertSessionHasErrors('export');
+        $this->placement->roster->update(['internship_ends_at'=>'2026-10-20']);
+        $this->post(route('journals.store'),['placement_id'=>$this->placement->id,'activity_date'=>'2026-10-21',
+            'activity'=>'Tidak sesuai jadwal baru','intent'=>'submitted'])->assertSessionHasErrors('activity_date');
+        $this->assertDatabaseMissing('journals',['activity'=>'Tidak sesuai jadwal baru']);
     }
 }

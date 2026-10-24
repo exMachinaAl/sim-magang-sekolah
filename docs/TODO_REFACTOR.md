@@ -1,5 +1,34 @@
 # Catatan Refactor SIMMAG
 
+## Tahap aktif — 24 Oktober 2026
+
+Penilaian selesai untuk tiga temuan flag: label historis roster, bukti industri privat/berversi unggah, pencarian dan filter rekap tahun/jurusan. Flag Penilaian dicopot setelah pengujian. [Uji contoh dan batas cakupan](PENILAIAN_BUKTI_DAN_REKAP.md). Prioritas kode berikutnya **Dashboard** sesuai flag; sertifikat/jurnal masih membutuhkan pemeriksaan dokumen dan UAT lapangan.
+
+Monitoring selesai untuk temuan audit: kategori kasus, penanggung jawab koordinator, guru opsional, status selesai/buka kembali, riwayat dan deteksi tab lama. Flag Monitoring dicopot, bukan flag modul lain. [Uji satu contoh yang sudah disiapkan](MONITORING_TINDAK_LANJUT.md). Prioritas kode berikutnya **Penilaian** sesuai flag (identitas historis, bukti industri, filter rekap), tanpa penambahan di luar audit.
+
+DOCX dari arsip disahkan kini tersedia tanpa LibreOffice, termasuk contoh siap unduh. Format 80/20 memakai berkas sumber asli; aspek bebas memakai tabel Word dinamis. PDF/versi/nilai lama tidak diubah. [Panduan Word dan batas presisi cetak](SERTIFIKAT_WORD_ARSIP.md). Pengguna belum menguji alur penuh secara manual; jangan menyamakan kelulusan tes otomatis dengan UAT selesai.
+
+**Titik evaluasi pengguna:** satu sertifikat DEMO siap unduh telah ditambahkan tanpa reset data lama; ada tombol langsung pada menu Sertifikat dan revisi terisi. [Langkah uji singkat](UJI_SERTIFIKAT_CEPAT.md). Tunggu evaluasi alur ini sebelum memperluas pengembangan. Flag tetap menjelaskan batas yang nyata, bukan menghalangi PDF bawaan.
+
+Sertifikat diperbarui sesuai paket pengguna: template cetak per ketentuan, variasi penandatangan independen, data depan lengkap, format belakang bebas/80-20, unggah DOCX dan arsip per versi. PDF bawaan siap; DOCX→PDF memerlukan instalasi/konfigurasi LibreOffice yang belum tersedia. Flag tetap karena keterbatasan tersebut dan arsip lama/UAT. [Petunjuk serta batas pengujian](SERTIFIKAT_TEMPLATE_CETAK.md).
+
+Monitoring tahap 1 selesai: koordinator dapat mencatat tanpa guru, `created_by` terpisah dari guru terkait, pencarian nama/NIS + filter tag tahun/jurusan untuk kandidat dan riwayat, label historis roster, serta paginasi database. Migrasi tanpa reset sudah diterapkan setelah backup. Flag merah menjadi **UNSTABLE**, belum dilepas karena status tindak lanjut terstruktur masih tertunda. [Rincian tahap Monitoring](MONITORING_KOORDINATOR.md). Tidak ada fitur tambahan di luar perbaikan audit; saran tambahan harus dibahas dahulu.
+
+Timeline kini **STABLE untuk cakupan temuan audit** dan flag UI dilepas: card jurusan → tabel siswa → timeline tanggal, siswa tanpa penempatan terlihat, kelas/jurusan historis, pembatasan akses, serta agregasi/pencarian/paginasi SQL. [Rincian pengujian Timeline](TIMELINE_ROSTER.md). Tahap ini tidak membutuhkan migrasi atau fresh. Stabil bukan jaminan tanpa bug baru; regresi tetap diuji.
+
+Pengamanan P0 sertifikat baru sudah diterapkan: kesiapan sebelum pengajuan/pengesahan, snapshot + PDF immutable per versi + hash, penolakan tab lama, revisi resmi, dan pencarian nama/NIS dengan filter tahun/jurusan. [Rincian dan penanganan sertifikat lama](SERTIFIKAT_ARSIP_VERSI.md). Migrasi additive sudah dijalankan setelah backup, tanpa fresh/reseed.
+
+Urutan kerja berikutnya:
+
+1. **Sertifikat lama:** satu dokumen terbit pada database kerja belum memiliki arsip. Pemeriksaan/rekonstruksi memerlukan koordinator; tidak dilakukan diam-diam. Flag merah tetap menjelaskan kondisi ini dan kebutuhan UAT.
+2. **Timeline — selesai:** daftar roster, card jurusan → tabel siswa, termasuk belum ditempatkan; flag dicopot setelah tes regresi/browser/MySQL lulus.
+3. **Monitoring — selesai untuk temuan audit:** penanggung jawab, kategori, status, riwayat, pencarian/filter, guru opsional serta ID editor sudah diterapkan dan diuji; lanjut evaluasi pengguna.
+4. **Penilaian — selesai untuk temuan audit:** label historis roster, bukti sumber industri privat, filter rekap tanpa selector siswa; lanjut evaluasi pengguna dan kelengkapan dokumen asli.
+5. **Dashboard:** tag tahun, siswa unik, rekap PKL/sekolah per jurusan dan keseluruhan.
+6. **UAT paralel:** pengguna mencoba kiosk; uji HP, HTTPS, cetak fisik, backup/restore, dan beban transaksi tetap dicatat terpisah dari kelulusan tes kode.
+
+Bagian di bawah adalah riwayat tahapan sebelumnya; jangan memakai daftar lama untuk menyimpulkan perbaikan di atas belum dikerjakan.
+
 Pembaruan jurnal 23 Oktober 2026: review koordinator/guru opsional, foto opsional, nilai dicatat siswa, validasi industri melalui browser terpercaya tanpa PIN, snapshot/revisi/waktu scan, dan Excel template enam entri telah diterapkan. Lihat [panduan jurnal QR dan Excel](JURNAL_INDUSTRI_QR_EXCEL.md). Uji HP nyata/cetak fisik masih diperlukan. Prioritas P0 berikutnya adalah pengamanan sertifikat; urutan audit lama di bawah dipertahankan sebagai riwayat.
 
 ## Prioritas aktif menu utama — audit 23 Oktober 2026

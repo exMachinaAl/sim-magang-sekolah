@@ -10,4 +10,5 @@ class Assessment extends Model {
  public function scores(){return $this->hasMany(AssessmentScore::class);}
  public function assessor(){return $this->belongsTo(User::class,'assessor_id');}
  public function approver(){return $this->belongsTo(User::class,'approved_by');}
+ public function evidence(){return $this->hasMany(AssessmentEvidence::class);}
 }

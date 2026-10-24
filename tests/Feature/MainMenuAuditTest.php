@@ -20,7 +20,7 @@ class MainMenuAuditTest extends TestCase
         $this->seed();
     }
 
-    public function test_each_main_page_has_its_own_warning_and_six_sidebar_tags(): void
+    public function test_only_unresolved_modules_show_warnings_and_sidebar_tags(): void
     {
         $this->actingAs(User::where('role', 'koordinator')->firstOrFail());
         foreach ([
@@ -29,12 +29,16 @@ class MainMenuAuditTest extends TestCase
             'monitoring.index' => 'monitoring', 'certificates.index' => 'certificates',
             'assessment-templates.index' => 'assessments',
         ] as $route => $module) {
-            $response = $this->get(route($route))->assertOk()
-                ->assertSee('data-module-health="'.$module.'"', false)
-                ->assertSee(config('main_menu_health.modules.'.$module.'.summary'))
-                ->assertSee('Sudah terhubung:')->assertSee('Perbaikan berikutnya:');
-            $this->assertSame(6, substr_count($response->getContent(), 'class="module-health-badge '));
-            $this->assertSame(1, substr_count($response->getContent(), 'data-module-health='));
+            $response = $this->get(route($route))->assertOk();
+            if (in_array($module,['timeline','monitoring','assessments'],true)) {
+                $response->assertDontSee('data-module-health=',false);
+            } else {
+                $response->assertSee('data-module-health="'.$module.'"', false)
+                    ->assertSee(config('main_menu_health.modules.'.$module.'.summary'))
+                    ->assertSee('Sudah terhubung:')->assertSee('Perbaikan berikutnya:');
+            }
+            $this->assertSame(3, substr_count($response->getContent(), 'class="module-health-badge '));
+            $response->assertDontSee('aria-label="Timeline PKL: UNSTABLE"',false);
         }
     }
 
@@ -47,13 +51,14 @@ class MainMenuAuditTest extends TestCase
         $this->get(route('reports.index'))->assertSee('RED FLAG — modul belum sepenuhnya sinkron');
         $this->actingAs(User::where('role', 'siswa')->firstOrFail());
         foreach (['dashboard', 'timeline.index', 'journals.index', 'assessments.index', 'certificates.index'] as $route) {
-            $this->get(route($route))->assertOk()->assertSee('data-module-health=', false)
-                ->assertDontSee('Periksa sumber jadwal di Kontrol PKL');
+            $response=$this->get(route($route))->assertOk()->assertDontSee('Periksa sumber jadwal di Kontrol PKL');
+            if (in_array($route,['timeline.index','assessments.index'],true)) $response->assertDontSee('data-module-health=',false);
+            else $response->assertSee('data-module-health=', false);
         }
         $this->get(route('monitoring.index'))->assertForbidden();
         $this->get(route('internships.index'))->assertForbidden();
         $this->actingAs(User::where('role', 'guru')->firstOrFail())->get(route('monitoring.index'))
-            ->assertOk()->assertSee('data-module-health="monitoring"', false);
+            ->assertOk()->assertDontSee('data-module-health="monitoring"', false);
         $this->actingAs(User::where('role', 'admin')->firstOrFail())->get(route('dashboard'))
             ->assertOk()->assertSee('data-module-health="dashboard"', false);
     }
@@ -72,10 +77,12 @@ class MainMenuAuditTest extends TestCase
         $this->assertSame(12, $report['metrics']['rosters_without_placement']);
         $this->assertSame(0, $report['metrics']['placement_roster_identity_mismatches']);
         $this->assertSame(2, $report['metrics']['submitted_journals_without_teacher']);
-        $this->assertSame(1, $report['metrics']['issued_certificates_live_data']);
+        $this->assertSame(0, $report['metrics']['issued_certificates_live_data']);
         $this->assertSame(30, array_sum($report['phases']));
         $this->assertSame([6], array_values(array_unique($report['phases'])));
         $this->assertSame(['certificates', 'journals', 'timeline', 'monitoring', 'assessments', 'dashboard'], array_keys($report['modules']));
+        $this->assertSame('stable',$report['modules']['timeline']['status']);
+        $this->assertSame('stable',$report['modules']['monitoring']['status']);
         $other = app(MainMenuAudit::class)->inspect('2027/2028');
         $this->assertSame(30, $other['metrics']['students_all_years']);
         $this->assertSame(0, $other['metrics']['rosters_in_year']);
@@ -109,7 +116,7 @@ class MainMenuAuditTest extends TestCase
         $this->assertSame(30, $decoded['metrics']['rosters_in_year']);
         $this->assertStringNotContainsString('@simmag.test', $output);
         $this->artisan('simmag:audit-main-menu')->expectsOutputToContain('Read-only.')
-            ->expectsOutputToContain('Pemeriksaan ini tidak memasang jadwal otomatis.')->assertSuccessful();
+            ->expectsOutputToContain('STABLE')->expectsOutputToContain('Pemeriksaan ini tidak memasang jadwal otomatis.')->assertSuccessful();
         foreach (['2026', '2026/2028', 'invalid'] as $year) {
             $this->artisan('simmag:audit-main-menu', ['--year' => $year])
                 ->expectsOutputToContain('Tahun ajaran harus berurutan')->assertExitCode(2);

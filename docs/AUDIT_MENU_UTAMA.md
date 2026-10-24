@@ -1,5 +1,15 @@
 # Audit menu utama — 23 Oktober 2026
 
+> Pembaruan Penilaian: ketiga temuan label historis, dokumen sumber industri, dan filter rekap telah ditutup. Flag STABLE disembunyikan dari UI setelah pengujian. [Panduan dan batas cakupan](PENILAIAN_BUKTI_DAN_REKAP.md). Bagian temuan Penilaian di bawah adalah riwayat, bukan status terbaru.
+
+> Pembaruan Monitoring tahap 2: temuan kategori/penanggung jawab/status/riwayat sudah ditutup, termasuk penguncian revisi dan guru opsional. Flag Monitoring kini STABLE dan disembunyikan dari UI. [Panduan serta batas cakupan](MONITORING_TINDAK_LANJUT.md). Keterangan tahap 1/historis di bawah tidak lagi berarti temuan tersebut masih terbuka.
+
+> Pembaruan Monitoring 24 Oktober 2026: akses pencatatan koordinator, identitas pencatat terpisah dari guru, serta pencarian nama/NIS + filter tahun/jurusan telah diperbaiki. Flag menjadi UNSTABLE karena status tindak lanjut terstruktur masih tertunda. [Rincian tahap 1](MONITORING_KOORDINATOR.md). Temuan lama di bawah tetap dipertahankan sebagai riwayat audit.
+
+> Pembaruan Timeline 24 Oktober 2026: seluruh temuan pada bagian Timeline historis di bawah sudah ditutup. Roster/jurusan menjadi sumber navigasi, termasuk siswa tanpa industri; pencarian/paginasi/agregasi dilakukan di SQL. Flag Timeline dilepas dari sidebar dan halaman, sedangkan catatan audit tetap berstatus STABLE. [Bukti dan batas pengujian](TIMELINE_ROSTER.md). Status modul lain tidak ikut berubah. Label STABLE bukan hasil otomatis dari angka nol dan bukan jaminan bebas regresi.
+
+> Pembaruan 24 Oktober 2026: [Arsip sertifikat per versi](SERTIFIKAT_ARSIP_VERSI.md) sudah menggantikan temuan P0 untuk dokumen baru. PDF disimpan utuh dan diverifikasi hash; sumber diperiksa sejak pengajuan dan sebelum disahkan. Revisi tidak menimpa dokumen lama. Pencarian kandidat menggunakan nama/NIS + tag/jurusan. Flag merah sertifikat sekarang khusus penanganan arsip lama dan gerbang UAT. `issued_certificates_live_data` kini menghitung dokumen terbit yang **belum memiliki arsip untuk versi aktif**, bukan seluruh dokumen terbit. Audit lokal: 1. Urutan kerja aktif ada di TODO_REFACTOR.md; daftar di bawah adalah bukti historis.
+
 > Pembaruan setelah audit: [Jurnal, perangkat industri, dan Excel](JURNAL_INDUSTRI_QR_EXCEL.md) sudah diimplementasikan. Review koordinator, foto opsional, pencarian NIS, koreksi setelah PKL, validasi QR per versi, dan Excel enam entri telah menggantikan temuan jurnal di bawah. Tag jurnal kini UNSTABLE untuk uji perangkat/cetak lapangan, bukan RED FLAG karena koordinator 403. Bagian audit berikut merupakan catatan kondisi **sebelum upgrade**; masalah sertifikat/timeline/monitoring lainnya tetap terbuka. Indikator submitted_journals_without_teacher sekarang bukan jurnal buntu karena koordinator dapat meninjau.
 
 ## Batas pekerjaan

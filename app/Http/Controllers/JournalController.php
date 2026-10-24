@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Journal, JournalAttachment, JournalEvent, Placement};
-use App\Support\{Access, Audit};
+use App\Models\{InternshipRoster, Journal, JournalAttachment, JournalEvent, Placement};
+use App\Support\{Access, Audit, JournalDateFilter};
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,10 +17,8 @@ class JournalController
         $filters = $request->validate([
             'q' => 'nullable|string|max:120',
             'status' => 'nullable|in:draft,submitted,revision,approved,rejected',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
             'period_id' => 'nullable|integer|exists:internship_periods,id',
-        ]);
+        ] + JournalDateFilter::rules($request));
 
         $hasJournalFilter = ! empty($filters['status']) || ! empty($filters['date_from']) || ! empty($filters['date_to']);
         $items = Access::placements($request->user())
@@ -103,12 +101,10 @@ class JournalController
     {
         $filters = $request->validate([
             'status' => 'nullable|in:draft,submitted,revision,approved,rejected',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
             'q' => 'nullable|string|max:120',
             'placement_id' => 'nullable|integer',
             'period_id' => 'nullable|integer|exists:internship_periods,id',
-        ]);
+        ] + JournalDateFilter::rules($request));
 
         if (! empty($filters['placement_id'])) {
             Access::placement($request->user(), (int) $filters['placement_id']);
@@ -123,8 +119,12 @@ class JournalController
             ->when($filters['date_from'] ?? null, fn ($q, $date) => $q->whereDate('activity_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($q, $date) => $q->whereDate('activity_date', '<=', $date))
             ->orderBy('activity_date')
-            ->limit(300)
+            ->limit(301)
             ->get();
+
+        if ($items->count() > 300) {
+            throw ValidationException::withMessages(['export'=>'Rekap PDF melebihi 300 entri. Persempit tanggal/siswa atau gunakan Excel per siswa; tidak ada data yang dipotong diam-diam.']);
+        }
 
         return Pdf::loadView('journals.pdf', compact('items'))->setPaper('a4', 'landscape')
             ->download('rekap-jurnal-simmag-'.now()->format('Ymd-His').'.pdf');
@@ -148,6 +148,16 @@ class JournalController
             'intent' => 'required|in:draft,submitted',
             'photos' => 'nullable|array|max:5',
             'photos.*' => 'image|mimes:jpg,jpeg,png|max:4096',
+        ], [
+            'ends_time.after_or_equal'=>'Jam selesai harus sama dengan atau setelah jam mulai.',
+            'ends_time.required_with'=>'Isi jam selesai jika jam mulai diisi.',
+            'starts_time.required_with'=>'Isi jam mulai jika jam selesai diisi.',
+            'industry_score.between'=>'Nilai industri harus berada antara 0 dan 100.',
+            'industry_score.decimal'=>'Nilai industri maksimal dua angka desimal.',
+            'activity_date.before_or_equal'=>'Tanggal kegiatan tidak boleh melewati hari ini.',
+            'photos.*.max'=>'Ukuran setiap foto maksimal 4 MB.',
+            'photos.*.image'=>'Lampiran harus berupa foto.',
+            'photos.*.mimes'=>'Gunakan foto berformat JPG atau PNG.',
         ]);
 
         $placement = Access::placement($request->user(), $data['placement_id']);
@@ -177,6 +187,15 @@ class JournalController
             }
 
             DB::transaction(function () use (&$journal, $placement, $data, $uploaded, $request) {
+                // Lock the source schedule first, consistently with bulk placement operations.
+                // A coordinator may have corrected it while photos were uploading.
+                $roster = InternshipRoster::whereKey($placement->internship_roster_id)->lockForUpdate()->first();
+                if (! $roster?->internship_starts_at || ! $roster?->internship_ends_at || $roster->internship_status === 'not_internship') {
+                    throw ValidationException::withMessages(['placement_id'=>'Jadwal Kontrol PKL berubah atau belum lengkap. Muat ulang sebelum menyimpan.']);
+                }
+                if ($data['activity_date'] < $roster->internship_starts_at->toDateString() || $data['activity_date'] > $roster->internship_ends_at->toDateString()) {
+                    throw ValidationException::withMessages(['activity_date'=>'Tanggal jurnal tidak lagi sesuai jadwal terbaru di Kontrol PKL.']);
+                }
                 Placement::whereKey($placement->id)->lockForUpdate()->firstOrFail();
                 $journal = Journal::where('placement_id', $placement->id)->whereDate('activity_date', $data['activity_date'])->lockForUpdate()->first();
                 if ((int) ($data['revision'] ?? 0) !== ($journal?->revision ?? 0)) {

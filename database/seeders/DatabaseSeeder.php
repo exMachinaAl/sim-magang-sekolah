@@ -88,10 +88,14 @@ class DatabaseSeeder extends Seeder
                 ]);
                 if ($phase===2) continue;
                 $date=$phase===0?$roster->internship_ends_at:$today->copy()->subDay();
-                $journal=Journal::firstOrCreate(['placement_id'=>$placement->id,'activity_date'=>$date->toDateString()],[
+                $journal=Journal::where('placement_id',$placement->id)->whereDate('activity_date',$date->toDateString())->first()
+                    ?? Journal::create(['placement_id'=>$placement->id,'activity_date'=>$date->toDateString(),
                     'activity'=>'Melaksanakan praktik kompetensi '.$major,'outcome'=>'Dokumentasi pekerjaan selesai.',
                     'status'=>$phase===0?'approved':'submitted','reviewed_by'=>$phase===0?$coordinator->id:null,
                     'reviewed_at'=>$phase===0?now():null,
+                    'reviewed_revision'=>$phase===0?1:null,'revision'=>1,'industry_score'=>88.25,
+                    'work_area'=>'Area praktik (Demo)','starts_time'=>'08:00','ends_time'=>'16:00',
+                    'equipment_notes'=>'Peralatan praktik sesuai jurusan (data fiktif).',
                 ]);
                 $journal->attachments()->firstOrCreate(['path'=>$demoPath],[
                     'original_name'=>'foto-jurnal-demo.png','mime'=>'image/png','size'=>Storage::disk('local')->size($demoPath),
@@ -114,6 +118,12 @@ class DatabaseSeeder extends Seeder
                     'number'=>'SIMMAG/'.$today->year.'/DEMO'.str_pad($index+1,3,'0',STR_PAD_LEFT),
                     'status'=>$issued?'awaiting_print':'awaiting_approval','issued_at'=>$issued?now():null,
                 ]);
+                // Only new demo certificates are captured. Never reconstruct existing issued documents implicitly.
+                if ($certificate->wasRecentlyCreated) {
+                    $certificate->refresh();
+                    $archive=app(\App\Support\CertificateArchive::class)->capture($certificate,$coordinator->id,'demo');
+                    if ($issued) $archive->update(['issued_at'=>$certificate->issued_at]);
+                }
                 $certificate->approvals()->firstOrCreate(['party'=>'coordinator'],[
                     'status'=>$issued?'approved':'pending','approver_id'=>$issued?$coordinator->id:null,'decided_at'=>$issued?now():null,
                 ]);

@@ -68,6 +68,7 @@ class IndustryJournalController
         DB::transaction(function()use($device){
             IndustryMentor::whereKey($device->industry_mentor_id)->lockForUpdate()->firstOrFail();
             $locked=IndustryDevice::whereKey($device->id)->lockForUpdate()->firstOrFail();
+            if ($locked->revoked_at) return;
             $locked->update(['revoked_at'=>now()]);
             Audit::record('industry_device.revoked',$locked);
         });
@@ -76,9 +77,13 @@ class IndustryJournalController
 
     public function toggle(Request $request, IndustryMentor $mentor)
     {
-        DB::transaction(function()use($mentor){
+        $data=$request->validate(['is_active'=>'required|boolean','expected_active'=>'required|boolean']);
+        DB::transaction(function()use($mentor,$data){
             $locked=IndustryMentor::whereKey($mentor->id)->lockForUpdate()->firstOrFail();
-            $locked->update(['is_active'=>!$locked->is_active]);
+            // Explicit target makes retries harmless instead of reversing the previous action.
+            if ($locked->is_active === (bool)$data['is_active']) return;
+            abort_unless($locked->is_active === (bool)$data['expected_active'],409,'Status pembimbing berubah. Muat ulang halaman.');
+            $locked->update(['is_active'=>(bool)$data['is_active']]);
             if(!$locked->is_active) {
                 $locked->devices()->update(['revoked_at'=>now()]);
                 DB::table('industry_device_invites')->where('industry_mentor_id',$locked->id)->update(['expires_at'=>now()]);
@@ -93,7 +98,7 @@ class IndustryJournalController
         $invite=DB::table('industry_device_invites')->where('token_hash',hash('sha256',$token))->first();
         abort_unless($invite && !$invite->used_at && now()->lt($invite->expires_at),410,'QR pendaftaran sudah digunakan atau kedaluwarsa. Minta QR baru ke koordinator.');
         $mentor=IndustryMentor::whereKey($invite->industry_mentor_id)->where('is_active',true)->firstOrFail();
-        if($request->isMethod('get')) return view('industry.scan',['title'=>'Mendaftarkan perangkat','mentor'=>$mentor,'action'=>url()->current(),'automatic'=>true]);
+        if($request->isMethod('get') || $request->isMethod('head')) return view('industry.scan',['title'=>'Mendaftarkan perangkat','mentor'=>$mentor,'action'=>url()->current(),'automatic'=>true]);
         $secret=Str::random(64);
         DB::transaction(function()use($invite,$mentor,$secret,$request){
             $locked=IndustryMentor::whereKey($mentor->id)->lockForUpdate()->firstOrFail();
@@ -150,7 +155,7 @@ class IndustryJournalController
         abort_unless($journal->revision===$qr->revision && $journal->status!=='draft',409,'Isi jurnal berubah. Minta siswa menampilkan QR versi terbaru.');
         if($qr->used_at) return redirect()->route('industry.home')->with('success','Versi jurnal ini sudah tervalidasi; tidak dicatat dua kali.');
         abort_unless(now()->lt($qr->expires_at),410,'QR kedaluwarsa. Siswa dapat membuat QR baru, termasuk untuk kegiatan hari lalu.');
-        if($request->isMethod('get')) return view('industry.scan',['title'=>'Memvalidasi jurnal','mentor'=>$device->mentor,'journal'=>$journal,'action'=>url()->current(),'automatic'=>true]);
+        if($request->isMethod('get') || $request->isMethod('head')) return view('industry.scan',['title'=>'Memvalidasi jurnal','mentor'=>$device->mentor,'journal'=>$journal,'action'=>url()->current(),'automatic'=>true]);
         DB::transaction(function()use($device,$qr,$request){
             $locked=Journal::whereKey($qr->journal_id)->lockForUpdate()->firstOrFail();
             IndustryMentor::whereKey($device->industry_mentor_id)->lockForUpdate()->firstOrFail();

@@ -189,7 +189,7 @@ class SimmagWorkflowTest extends TestCase
         $student=$this->user('siswa','Siswa A');
         $placement=$this->placement($student,$teacher,'10001');
         $this->actingAs($coordinator)->post(route('certificates.create'),[
-            'placement_id'=>$placement->id])->assertSessionHasErrors('placement_id');
+            'placement_id'=>$placement->id])->assertSessionHasErrors('certificate');
         $this->assertDatabaseCount('certificates',0);
     }
 
@@ -236,7 +236,7 @@ class SimmagWorkflowTest extends TestCase
         $this->actingAs($coordinator)->post(route('certificates.create'),['placement_id'=>$placement->id])->assertRedirect();
         $certificate=Certificate::firstOrFail();
         $this->assertSame('awaiting_approval',$certificate->status);
-        $this->actingAs($coordinator)->put(route('certificates.approve',$certificate),['decision'=>'approved'])->assertRedirect();
+        $this->actingAs($coordinator)->put(route('certificates.approve',$certificate),['decision'=>'approved','version'=>$certificate->version])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame('awaiting_print',$certificate->fresh()->status);
         $this->assertDatabaseCount('certificate_approval_events',1);
 
@@ -247,16 +247,12 @@ class SimmagWorkflowTest extends TestCase
 
     public function test_coordinator_handles_certificate_distribution(): void
     {
-        $coordinator=$this->user('koordinator','Koordinator');
-        $teacher=$this->user('guru','Guru A');
-        $student=$this->user('siswa','Siswa A');
-        $placement=$this->placement($student,$teacher,'10001');
-        $certificate=Certificate::create([
-            'placement_id'=>$placement->id,'number'=>'SIMMAG/2026/TEST01','status'=>'awaiting_print'
-        ]);
+        $this->seed();
+        $coordinator=User::where('role','koordinator')->firstOrFail();
+        $certificate=Certificate::where('status','awaiting_print')->firstOrFail();
 
         $this->actingAs($coordinator)->put(route('certificates.movement',$certificate),[
-            'expected_status'=>'awaiting_print','recipient'=>'Bagian Administrasi'
+            'expected_status'=>'awaiting_print','version'=>$certificate->version,'recipient'=>'Bagian Administrasi'
         ])->assertRedirect();
 
         $this->assertSame('printed',$certificate->fresh()->status);
@@ -360,7 +356,7 @@ class SimmagWorkflowTest extends TestCase
         $this->assertDatabaseCount('timeline_event_completions',0);
     }
 
-    public function test_timeline_navigation_opens_teacher_then_student_instead_of_showing_every_student(): void
+    public function test_timeline_navigation_opens_major_then_student_instead_of_showing_every_student(): void
     {
         $coordinator=$this->user('koordinator','Koordinator Navigasi');
         $teacher=$this->user('guru','Guru Navigasi');
@@ -376,12 +372,12 @@ class SimmagWorkflowTest extends TestCase
         $directory=$this->actingAs($coordinator)->get(route('timeline.index',[
             'period_id'=>$placement->internship_period_id,
         ]));
-        $directory->assertOk()->assertSee('Daftar Guru Pembimbing')->assertSee('Guru Navigasi')->assertDontSee('Siswa Navigasi');
+        $directory->assertOk()->assertSee('Timeline per Jurusan')->assertSee($placement->roster->major)->assertDontSee('Siswa Navigasi');
 
         $students=$this->actingAs($coordinator)->get(route('timeline.index',[
-            'period_id'=>$placement->internship_period_id,'teacher_id'=>$teacher->id,
+            'period_id'=>$placement->internship_period_id,'major'=>$placement->roster->major,
         ]));
-        $students->assertOk()->assertSee('Daftar Siswa Bimbingan')->assertSee('Siswa Navigasi')->assertSee('Fase Hari Ini');
+        $students->assertOk()->assertSee($placement->roster->major)->assertSee('Siswa Navigasi')->assertSee('Fase Hari Ini');
 
         $detail=$this->actingAs($coordinator)->get(route('timeline.index',[
             'period_id'=>$placement->internship_period_id,'teacher_id'=>$teacher->id,'placement_id'=>$placement->id,
