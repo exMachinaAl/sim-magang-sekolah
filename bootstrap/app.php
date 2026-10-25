@@ -10,6 +10,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([\App\Console\Commands\AuditMainMenu::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['role' => EnsureRole::class, 'active' => EnsureActiveAccount::class]);
+        $middleware->trustProxies(headers:
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $exception, \Illuminate\Http\Request $request) {

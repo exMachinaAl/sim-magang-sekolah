@@ -1,5 +1,7 @@
 # Audit menu utama — 23 Oktober 2026
 
+> Pembaruan Sertifikat 25 Oktober 2026: jalur PDF berdekorasi dan pratinjau tersedia tanpa LibreOffice; jalur DOCX tetap ekstensi opsional. Arsip versi lama tetap utuh. Flag masih untuk arsip lama/UAT, bukan kewajiban memasang LibreOffice. [Petunjuk dan batas cakupan](SERTIFIKAT_PDF_DEKORASI.md).
+
 > Pembaruan Dashboard 24 Oktober 2026: ketiga temuan filter tag tahun, siswa unik, serta rekap fase sekolah/jurusan telah ditutup. Flag Dashboard dilepas setelah tes regresi, browser, dan query MySQL baca-saja. [Panduan dan batas](DASHBOARD_REKAP_TAHUN.md). Temuan Dashboard di bawah adalah riwayat audit.
 
 > Pembaruan Penilaian: ketiga temuan label historis, dokumen sumber industri, dan filter rekap telah ditutup. Flag STABLE disembunyikan dari UI setelah pengujian. [Panduan dan batas cakupan](PENILAIAN_BUKTI_DAN_REKAP.md). Bagian temuan Penilaian di bawah adalah riwayat, bukan status terbaru.

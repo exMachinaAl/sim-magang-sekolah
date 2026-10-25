@@ -1,6 +1,16 @@
 # Catatan Refactor SIMMAG
 
-## Tahap aktif — 24 Oktober 2026
+## Tahap aktif — 25 Oktober 2026
+
+Fresh demo telah dijalankan atas izin pengguna, setelah backup dan pemulihan terverifikasi. Kini 31 siswa, 19 penempatan dan **0 sertifikat terbit tanpa arsip**; flag Sertifikat turun menjadi UNSTABLE untuk UAT. Tabel kompatibilitas kosong masih dipertahankan karena referensi kode; file privat tidak dihapus. [Catatan reset](RESET_DEMO_20261025.md). HTTPS lokal tersedia pada `https://192.168.0.114:8443`; uji komputer lulus, pengguna perlu memasang CA dan mengizinkan firewall untuk HP. [Panduan langkah demi langkah](HTTPS_KIOSK_LOKAL.md). Bagian di bawah mencatat tahap sebelum reset.
+
+Sertifikat: error 500 pada pengajuan ganda dan benturan nomor telah diperbaiki. Penguncian roster/penempatan dilakukan sebelum pembacaan snapshot transaksi; perubahan sumber yang selesai saat permintaan menunggu kini terbaca. Sepuluh skenario MySQL lulus: pengajuan, pengesahan, revisi, distribusi, rekonstruksi arsip dan DOCX bersamaan, termasuk versi/sumber yang berubah. [Bukti dan cara mengulang](UJI_MYSQL_SERTIFIKAT.md). Tidak membutuhkan migrasi/reset. Flag tetap untuk arsip lama, pemulihan lintas server, kapasitas staging dan UAT/cetak; HTTPS/kiosk dijadwalkan setelah fokus Sertifikat ini.
+
+Jurnal: enam skenario transaksi bersamaan lulus pada MySQL lokal melalui proses PHP terpisah dan penguncian baris nyata. Scan tidak menggandakan validasi/audit, edit tab lama ditolak, perubahan isi/jadwal dan pencabutan perangkat diperiksa ulang, undangan perangkat sekali pakai. Tidak ada perubahan aturan bisnis atau migrasi. [Cara mengulang dan batas bukti](UJI_MYSQL_JURNAL.md). Flag tetap menunggu HP/HTTPS, cetak, pemulihan foto dan kapasitas staging; hasil ini tidak menutup pengujian konkurensi Sertifikat.
+
+Pemulihan arsip database selesai untuk uji lokal: backup baru dipulihkan ke database MySQL sementara, seluruh struktur/isi tabel dibandingkan, hash enam berkas diperiksa, lalu database sementara dihapus. Data kerja tidak ditimpa; satu sertifikat lama tanpa arsip tetap dilaporkan. Perintah uji dapat dipakai ulang. [Bukti dan cara menjalankan](PEMULIHAN_ARSIP_DATABASE.md). Flag masih untuk arsip lama, transaksi konkuren, pemulihan server/foto dan cetak/kiosk nyata.
+
+Sertifikat PDF berdekorasi diterapkan sebagai jalur PHP mandiri: desain depan/belakang, area isi dalam mm, pratinjau bertanda belum diterbitkan tanpa perubahan data, arsip tetap per versi. Jalur DOCX/LibreOffice dipertahankan sebagai ekstensi opsional. Migrasi tambahan sudah diterapkan setelah backup, tanpa fresh/reset; template contoh memakai siswa demo yang sudah ada. [Panduan](SERTIFIKAT_PDF_DEKORASI.md). Flag Sertifikat tetap untuk arsip lama/UAT, bukan karena LibreOffice wajib.
 
 Laporan & Audit selesai untuk red flag terakhir di manajemen: ekspor seluruh roster termasuk belum ditempatkan, filter tahun/jurusan untuk semua ekspor, label historis dan fase WIB. Flag dicopot setelah 146 tes dan uji browser lulus, tanpa migrasi/reset. [Cara mencoba](LAPORAN_ROSTER.md). [Daftar kekurangan setelah upgrade](KEKURANGAN_SETELAH_UPGRADE.md) mencatat arsip sertifikat lama, konversi/cetak, kiosk HP, backup/konkurensi dan UAT yang masih tersisa; tidak ada penambahan di luar flag.
 

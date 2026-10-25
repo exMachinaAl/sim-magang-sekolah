@@ -33,16 +33,27 @@ class CertificateController {
   $printTemplate=isset($data['print_template_id'])?\App\Models\CertificatePrintTemplate::findOrFail($data['print_template_id']):null;
   $printOptions=$printTemplate?app(\App\Support\CertificatePrint::class)->options($r,$printTemplate):null;
   $p=Access::placement($r->user(),$data['placement_id']);
-  DB::transaction(function()use($p,$r,$printTemplate,$printOptions,$data){
-   $p=$this->lockPlacement($p->id);
+  $chosenNumber=null;
+  try {
+  DB::transaction(function()use($p,$r,$printTemplate,$printOptions,$data,&$chosenNumber){
+   $p=$this->lockPlacement($p);
    if($p->certificate()->exists())throw ValidationException::withMessages(['placement_id'=>'Sertifikat untuk penempatan ini sudah dibuat.']);
    $c=Certificate::create(['placement_id'=>$p->id,'status'=>'awaiting_approval','print_template_id'=>$printTemplate?->id,'print_options'=>$printOptions]);
    $c->refresh();
-   $c->update(['number'=>$data['number']??('SIMMAG/'.now()->year.'/'.str_pad($c->id,5,'0',STR_PAD_LEFT))]);
+   $chosenNumber=$data['number']??('SIMMAG/'.now()->year.'/'.str_pad($c->id,5,'0',STR_PAD_LEFT));
+   $c->update(['number'=>$chosenNumber]);
    app(CertificateArchive::class)->capture($c,$r->user()->id);
    $c->approvals()->create(['party'=>'coordinator','status'=>'pending']);
    Audit::record('certificate.created',$c);
   },3);
+  } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+   // A different placement can claim the number after request validation. The
+   // transaction has rolled back; keep unrelated integrity failures visible.
+   if($chosenNumber!==null && Certificate::where('number',$chosenNumber)->exists()) {
+    throw ValidationException::withMessages(['number'=>'Nomor sertifikat sudah digunakan. Muat ulang dan masukkan nomor lain.']);
+   }
+   throw $e;
+  }
   return back()->with('success','Sertifikat dibuat dan dikirim untuk persetujuan.');
  }
  public function show(Request $r,Certificate $certificate){
@@ -58,8 +69,9 @@ class CertificateController {
   $party='coordinator';
   abort_unless($c->status==='awaiting_approval',422,'Sertifikat ini tidak sedang menunggu persetujuan.');
   $d=$r->validate(['version'=>'required|integer|min:1','decision'=>'required|in:approved,rejected','note'=>'required_if:decision,rejected|nullable|string|max:2500']);
-  DB::transaction(function()use($c,$party,$d,$user){
-   $this->lockPlacement($c->placement_id);
+  $placement=$c->placement;
+  DB::transaction(function()use($c,$party,$d,$user,$placement){
+   $this->lockPlacement($placement);
    $c=Certificate::whereKey($c->id)->lockForUpdate()->firstOrFail();
    abort_unless($c->status==='awaiting_approval' && $c->version===(int)$d['version'],409,'Versi/status berubah. Muat ulang sebelum memutuskan.');
    $a=$c->approvals()->where('party',$party)->lockForUpdate()->firstOrFail();
@@ -88,8 +100,9 @@ class CertificateController {
   $d=$r->validate(['version'=>'required|integer|min:1','note'=>'required|string|max:2500','print_template_id'=>'nullable|integer|exists:certificate_print_templates,id']);
   $printTemplate=isset($d['print_template_id'])?\App\Models\CertificatePrintTemplate::findOrFail($d['print_template_id']):null;
   $printOptions=$printTemplate?app(\App\Support\CertificatePrint::class)->options($r,$printTemplate):null;
-  DB::transaction(function()use($c,$d,$r,$printTemplate,$printOptions){
-   $this->lockPlacement($c->placement_id);
+  $placement=$c->placement;
+  DB::transaction(function()use($c,$d,$r,$printTemplate,$printOptions,$placement){
+   $this->lockPlacement($placement);
    $c=Certificate::whereKey($c->id)->lockForUpdate()->firstOrFail();
    abort_unless($c->version===(int)$d['version'],409,'Versi berubah. Muat ulang.');
    if($c->issued_at && !$c->documents()->where('version',$c->version)->whereNotNull('issued_at')->exists()) {
@@ -143,10 +156,11 @@ class CertificateController {
 
  public function archiveLegacy(Request $r,Certificate $certificate){
   abort_unless($r->user()->isRole('koordinator'),403);
-  Access::certificates($r->user())->findOrFail($certificate->id);
+  $certificate=Access::certificates($r->user())->findOrFail($certificate->id);
   $d=$r->validate(['version'=>'required|integer|min:1','note'=>'required|string|min:10|max:2500']);
-  DB::transaction(function()use($certificate,$r,$d){
-   $this->lockPlacement($certificate->placement_id);
+  $placement=$certificate->placement;
+  DB::transaction(function()use($certificate,$r,$d,$placement){
+   $this->lockPlacement($placement);
    $c=Certificate::whereKey($certificate->id)->lockForUpdate()->firstOrFail();
    abort_unless($c->version===(int)$d['version'] && $c->issued_at && !in_array($c->status,['awaiting_approval','revision_required']),409,'Versi/status dokumen berubah atau belum diterbitkan.');
    abort_unless($c->approvals()->where('party','coordinator')->where('status','approved')->exists(),422,'Persetujuan lama tidak ditemukan.');
@@ -158,10 +172,16 @@ class CertificateController {
   return back()->with('success','Salinan berdasarkan data saat ini diarsipkan. Ini rekonstruksi eksplisit, bukan bukti bahwa isinya identik dengan cetakan lama.');
  }
 
- private function lockPlacement(int $id): Placement {
-  $placement=Placement::findOrFail($id);
-  if($placement->internship_roster_id)InternshipRoster::whereKey($placement->internship_roster_id)->lockForUpdate()->firstOrFail();
-  return Placement::whereKey($id)->lockForUpdate()->firstOrFail();
+ private function lockPlacement(Placement $expected): Placement {
+  // Resolve the expected roster BEFORE entering the transaction. A plain SELECT here
+  // would establish MySQL's repeatable-read snapshot before waiting on the locks,
+  // hiding certificates or source corrections committed by the preceding request.
+  if($expected->internship_roster_id)InternshipRoster::whereKey($expected->internship_roster_id)->lockForUpdate()->firstOrFail();
+  $locked=Placement::whereKey($expected->id)->lockForUpdate()->firstOrFail();
+  abort_unless($locked->internship_roster_id===$expected->internship_roster_id
+   && $locked->student_id===$expected->student_id && $locked->internship_period_id===$expected->internship_period_id,
+   409,'Hubungan penempatan berubah. Muat ulang sebelum memproses sertifikat.');
+  return $locked;
  }
 
  public function prepare(Request $r,Placement $placement){

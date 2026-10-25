@@ -25,6 +25,21 @@ class CertificateArchiveTest extends TestCase
         return Placement::whereHas('assessment',fn($q)=>$q->where('status','approved'))->whereDoesntHave('certificate')->firstOrFail();
     }
 
+    public function test_generated_number_collision_is_validation_error_and_rolls_back_submission(): void
+    {
+        $p=$this->candidate();
+        $other=Placement::whereDoesntHave('certificate')->where('id','!=',$p->id)->firstOrFail();
+        // A manually chosen number may already occupy the next generated number.
+        $next=(int)DB::table('sqlite_sequence')->where('name','certificates')->value('seq')+2;
+        $number='SIMMAG/'.now()->year.'/'.str_pad($next,5,'0',STR_PAD_LEFT);
+        Certificate::create(['placement_id'=>$other->id,'number'=>$number,'status'=>'awaiting_approval']);
+        $documents=CertificateDocument::count();
+        $this->post(route('certificates.create'),['placement_id'=>$p->id])->assertSessionHasErrors('number');
+        $this->assertDatabaseMissing('certificates',['placement_id'=>$p->id]);
+        $this->assertDatabaseCount('certificate_documents',$documents);
+        $this->assertDatabaseHas('certificates',['placement_id'=>$other->id,'number'=>$number]);
+    }
+
     public function test_new_proposal_validates_roster_and_scores_and_rolls_back_bad_layout(): void
     {
         $p=$this->candidate();

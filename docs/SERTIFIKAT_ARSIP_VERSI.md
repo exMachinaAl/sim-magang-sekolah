@@ -47,6 +47,7 @@ Perbandingan snapshot tidak bergantung pada urutan key JSON karena MySQL dapat m
 - Suite: **99 tes / 1.790 assertion** lulus (SQLite in-memory).
 - Regresi: tanggal/nilai kosong, layout melebihi dua halaman, rollback, perubahan sumber sebelum pengesahan, tab/versi lama, revisi dan PDF lama identik, akses lintas siswa, rekonstruksi eksplisit, hash rusak, model immutable, normalisasi JSON.
 - Smoke test Edge dengan database/temp storage terpisah: kiosk tetap berjalan; pencarian nama/NIS sertifikat, pengajuan revisi, persetujuan, serta PDF arsip versi lama identik lulus. Script: `scripts/journal-browser-smoke.cjs`, prosedur dependency di STABILISASI_JURNAL_DAN_RESET_UJI.md.
-- Belum: uji beban/kunci transaksi MySQL bersamaan, backup/restore operasional, cetak bolak-balik pada printer sekolah, serta template desain resmi customer.
+- Pembaruan 25 Oktober: sepuluh skenario kunci/transaksi MySQL bersamaan lulus setelah perbaikan pengajuan ganda dan benturan nomor. [Bukti dan cara mengulang](UJI_MYSQL_SERTIFIKAT.md). Pemulihan database/arsip lokal juga sudah diuji terpisah.
+- Belum: kapasitas staging, pemulihan server baru/foto, cetak bolak-balik pada printer sekolah, serta evaluasi desain resmi customer.
 
 Prioritas kode berikutnya: Timeline berbasis roster dan jurusan, kemudian Monitoring kasus koordinator, perapian Penilaian, dan Dashboard per tahun. Jurnal/kiosk tetap menjalani UAT paralel; kelulusan tes kode tidak dianggap pengesahan hasil lapangan.

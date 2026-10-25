@@ -294,7 +294,15 @@ async function postButton(page, action) {
   const preview=await previewResponse;
   assert.equal(preview.status(),200);
   assert.match(preview.headers()['content-type'],/application\/pdf/);
-  fs.writeFileSync(path.join(directory,'certificate-decorated-preview.pdf'),await preview.body());
+  // Chromium's inline PDF viewer can expose its HTML embed wrapper as response.body().
+  // Fetch the same CSRF-protected POST through the authenticated request context for actual PDF bytes.
+  const previewBytesResponse=await contexts[0].request.post(preview.url(),{
+    data:preview.request().postData(),headers:{'Content-Type':preview.request().headers()['content-type']}
+  });
+  assert.equal(previewBytesResponse.status(),200);
+  const previewBytes=await previewBytesResponse.body();
+  assert.equal(previewBytes.subarray(0,4).toString(),'%PDF');
+  fs.writeFileSync(path.join(directory,'certificate-decorated-preview.pdf'),previewBytes);
   await coordinator.getByRole('button', { name:'Buat & Ajukan Sertifikat', exact:true }).click();
   await coordinator.waitForLoadState('networkidle');
   assert.match(await coordinator.getByRole('status').innerText(), /Sertifikat dibuat/);

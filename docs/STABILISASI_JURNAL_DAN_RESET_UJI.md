@@ -78,7 +78,8 @@ Tag jurnal tetap UNSTABLE dengan keterangan **tes otomatis lulus, menunggu UAT**
 - [ ] Uji HP siswa dan HP Dodi melalui domain yang benar, Google Camera/Lens membuka browser terdaftar, termasuk kehilangan cookie dan daftar ulang.
 - [ ] Uji deployment HTTPS yang akan dipakai, proxy/secure cookie, akses jaringan, dan redaksi URL QR dari log server. HTTP hanya untuk dev local.
 - [ ] Buka Excel di perangkat sekolah dan cetak enam/tujuh entri, nilai kosong/0/desimal, narasi panjang + lembar Rincian, serta nama panjang. Verifikasi keterbacaan dan tanda validasi bersama customer.
-- [ ] Uji pada salinan MySQL staging: dua tab siswa, dua scan bersamaan, pencabutan saat scan, dan koreksi jadwal bersamaan. SQLite/browser berurutan tidak membuktikan perilaku locking MySQL pada beban nyata.
+- [x] Uji transaksi MySQL lokal terpisah: dua tab siswa, dua scan bersamaan, perubahan isi saat scan, pencabutan saat scan, pendaftaran perangkat bersamaan, dan koreksi jadwal saat simpan. Enam skenario lulus pada 25 Oktober 2026. [Perintah dan bukti](UJI_MYSQL_JURNAL.md).
+- [ ] Ulangi pengujian di staging dengan konfigurasi deployment dan beban sekolah. Uji lokal enam skenario bukan bukti kapasitas atau seluruh kemungkinan urutan transaksi.
 - [ ] Uji backup/restore database dan foto di lingkungan terpisah.
 
 Setelah semua gerbang lulus, catat tanggal, perangkat, versi aplikasi, dan hasil sebelum mengubah status. Sertifikat masih prioritas P0 (snapshot dokumen); bug modul lain tetap tercatat di AUDIT_MENU_UTAMA.md dan tidak disamarkan sebagai selesai.

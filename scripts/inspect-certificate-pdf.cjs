@@ -19,6 +19,8 @@ for (const name of ['DOMMatrix','ImageData','Path2D']) globalThis[name]=canvasTo
     const canvas=canvasTools.createCanvas(Math.ceil(viewport.width),Math.ceil(viewport.height));
     await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
     const text=(await page.getTextContent()).items.map(item=>item.str).join(' ');
+    if (path.basename(input).includes('preview')) assert.match(text,/PRATINJAU - BELUM DITERBITKAN/);
+    else assert.doesNotMatch(text,/PRATINJAU - BELUM DITERBITKAN/);
     assert.match(text,/CONTOH DEKORASI/,'Background artwork text must survive composition');
     if (n===2) assert.match(text,/Nilai akhir resmi/,'Back must contain assessment results');
     fs.writeFileSync(input+'.page-'+n+'.png',canvas.toBuffer('image/png'));
