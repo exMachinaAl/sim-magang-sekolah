@@ -4,6 +4,10 @@ Setiap tahap berikutnya wajib mengikuti [pola penyerahan upgrade](POLA_PENYERAHA
 
 ## Tahap aktif — 4 November 2026
 
+Pengguna menyatakan hasil Excel Jurnal cukup bagus; UAT tersebut dicatat LULUS. Sertifikat akan dikoreksi berikutnya. Sambil menunggu, roadmap staging dimulai melalui [template, pemeriksaan read-only, dan panduan deployment](DEPLOYMENT_STAGING.md). Audit lokal saat ini menemukan dua perubahan wajib sebelum menjadi staging (`APP_ENV` dan `LOG_LEVEL`) serta dua saran (domain tetap dan akun demo).
+
+Pemeriksaan deployment/proxy lulus 6 tes/27 assertion dan regresi lengkap lulus 168 tes/2.953 assertion. Kebutuhan PHP/Composer, cache konfigurasi, Blade, serta dokumentasi juga lulus. Penerapan ke staging belum dilakukan karena domain/server tujuan belum ditentukan; `.env` dan database kerja tidak diubah.
+
 Seluruh flag menu utama sudah ditutup untuk cakupan audit/penggunaan lokal. Jurnal Excel memiliki margin cetak seimbang dan pemusatan halaman; Sertifikat memakai identitas PDF terpusat serta verifikasi arsip sebelum distribusi. [Dokumentasi pengujian, checklist pengguna, dan roadmap staging](STABILISASI_20261104_TAHAP2.md).
 
 Tahap aktif berikutnya adalah koreksi output dari pengguna. Sesudah itu: staging HTTPS/domain tetap → pemulihan SQL + ZIP foto pada server baru → uji kapasitas sekolah → penilaian produksi. Usulan fitur bisnis baru tetap dibahas sebelum dikerjakan.

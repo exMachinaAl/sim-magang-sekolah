@@ -2,6 +2,8 @@
 
 Pembaruan tahap 2: **seluruh flag menu utama telah ditutup untuk cakupan audit/penggunaan lokal**. Jurnal Excel kini dipusatkan dengan margin cetak seimbang; Sertifikat memakai identitas PDF terpusat dan verifikasi arsip sebelum distribusi. Keterbatasan di bawah tetap menjadi checklist UAT/deployment, bukan alasan menampilkan tag UNSTABLE pada modul. [Bukti, file contoh dan roadmap](STABILISASI_20261104_TAHAP2.md).
 
+UAT pengguna 4 November: **Excel Jurnal dinyatakan cukup bagus**. Koreksi Sertifikat belum diberikan. Persiapan staging sudah memiliki [pemeriksaan konfigurasi dan template aman](DEPLOYMENT_STAGING.md); penerapan menunggu domain/server staging.
+
 **Pendaftaran kiosk dan validasi jurnal lewat HTTPS di HP sudah dikonfirmasi berhasil oleh pengguna.** Identitas penerima PDF telah dipusatkan dan distribusi menolak arsip PDF rusak. Pemulihan lokal database, arsip dan foto berhasil; tidak ada fresh/reset pada tahap ini. [Hasil dan pratinjau terbaru](STABILISASI_20261104.md). Database demo tetap memiliki **0 sertifikat terbit tanpa arsip aktif** pada pemeriksaan pemulihan 3 November.
 
 PDF berdekorasi dan pratinjau sekarang tersedia tanpa LibreOffice. Konversi DOCX dipertahankan sebagai ekstensi opsional, bukan syarat penggunaan sertifikat. [Cara mencoba dan batas layout](SERTIFIKAT_PDF_DEKORASI.md).

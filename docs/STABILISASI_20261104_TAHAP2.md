@@ -29,6 +29,8 @@ Tidak ada migrasi, fresh, reset, reseed, atau perubahan data kerja. Contoh Excel
 
 ### B. Jurnal Excel
 
+**Status pengguna: LULUS / cukup bagus, 4 November 2026.** Checklist berikut dipertahankan sebagai rekam pengujian.
+
 1. Buka [contoh Excel tujuh entri](../storage/app/private/pratinjau-jurnal-7-entri-20261104.xlsx).
 2. `Jurnal 1` harus memuat enam entri dan `Jurnal 2` satu entri. Keduanya A4 landscape dan berada di tengah halaman cetak.
 3. Nilai `88,25`, `0`, dan `74,99` harus tetap angka persis; nilai di bawah 75 diberi keterangan dan tidak dipindahkan ke predikat yang salah.
@@ -46,8 +48,8 @@ Koreksi cukup menyebut `A` atau `B`, nomor langkah, hasil aktual, dan hasil yang
 
 ## Roadmap setelah koreksi
 
-1. Catat hasil koreksi PDF dan Excel. Bila ada ketidaktepatan printer/aplikasi tertentu, perbaiki hanya jalur output terkait lalu ulangi tes regresinya.
-2. Siapkan deployment staging dengan domain/HTTPS tetap, secure cookie, konfigurasi kunci dan penyimpanan privat.
+1. Catat hasil koreksi PDF Sertifikat. Excel Jurnal sudah diterima pengguna; bila kelak ada ketidaktepatan printer tertentu, buka temuan khusus output tersebut.
+2. Siapkan deployment staging dengan domain/HTTPS tetap, secure cookie, konfigurasi kunci dan penyimpanan privat. Pemeriksaan dan template tersedia pada [panduan staging](DEPLOYMENT_STAGING.md).
 3. Pulihkan pasangan backup SQL + ZIP foto pada server staging baru, lalu cocokkan arsip sertifikat dan foto jurnal.
 4. Uji kapasitas memakai volume setara satu angkatan: pencarian, ekspor jurnal, pembuatan sertifikat, dua koordinator, dan scan kiosk bersamaan.
 5. Setelah staging dan UAT lulus, lakukan penilaian kesiapan produksi serta prosedur backup terjadwal. Fitur bisnis baru dibahas sebelum masuk roadmap.

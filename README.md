@@ -126,6 +126,8 @@ Untuk mengembangkan aplikasi ke tahap produksi, validasi dahulu bersama sekolah:
 
 Setiap perbaikan/pembaruan harus ditutup dengan dokumentasi hasil tes, checklist yang perlu dicoba pengguna, status flag, serta roadmap tahap berikutnya. Gunakan [pola penyerahan upgrade](docs/POLA_PENYERAHAN_UPGRADE.md); hasil tahap terbaru ada di [stabilisasi tahap 2, 4 November 2026](docs/STABILISASI_20261104_TAHAP2.md).
 
+Sebelum memasang pada staging/produksi, ikuti [panduan deployment staging](docs/DEPLOYMENT_STAGING.md) dan jalankan `php artisan simmag:check-deployment --target=staging`. Perintah tersebut read-only dan tidak menampilkan kredensial.
+
 Jalankan `php artisan test` setelah Composer selesai diinstal dan ekstensi SQLite diaktifkan pada PHP yang dipakai Composer/Artisan. Berkas pengujian menggunakan SQLite in-memory (terpisah dari MySQL demo), menguji otorisasi antarguru, akses foto, siswa lintas penempatan, penonaktifan akun, validasi nilai, pembatasan admin, dan persetujuan sertifikat oleh koordinator.
 
 Kriteria kelulusan juga perlu dites secara manual lewat seluruh akun demo dan beberapa berkas foto asli format JPG/PNG. Jangan unggah informasi nyata atau rahasia mitra sebelum kebijakan penyimpanan ditetapkan.
