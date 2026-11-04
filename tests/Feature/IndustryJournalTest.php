@@ -178,6 +178,11 @@ class IndustryJournalTest extends TestCase
         $this->assertSame('Belum divalidasi industri',$first->getCell('L9')->getValue());
         $this->assertContains('A1:L2',$first->getMergeCells());
         $this->assertSame('A1:L23',$first->getPageSetup()->getPrintArea());
+        $this->assertTrue($first->getPageSetup()->getHorizontalCentered());
+        $this->assertFalse($first->getPageSetup()->getVerticalCentered());
+        $this->assertEqualsWithDelta(8/25.4,$first->getPageMargins()->getLeft(),0.0001);
+        $this->assertEqualsWithDelta(8/25.4,$first->getPageMargins()->getRight(),0.0001);
+        $this->assertFalse($first->getPrintGridlines());
         foreach($book->getAllSheets() as $sheet) foreach($sheet->toArray() as $row) foreach($row as $value) {
             $this->assertStringNotContainsString('{{',(string)$value);
         }
@@ -191,6 +196,9 @@ class IndustryJournalTest extends TestCase
             $this->assertSame(3,$downloaded->getSheetCount());
             $this->assertEquals(88.25,$downloaded->getSheet(0)->getCell('I13')->getValue());
             $this->assertSame(DataType::TYPE_STRING,$downloaded->getSheet(0)->getCell('E9')->getDataType());
+            $this->assertTrue($downloaded->getSheet(0)->getPageSetup()->getHorizontalCentered());
+            $this->assertEqualsWithDelta(8/25.4,$downloaded->getSheet(0)->getPageMargins()->getLeft(),0.0001);
+            $this->assertEqualsWithDelta(8/25.4,$downloaded->getSheet(0)->getPageMargins()->getRight(),0.0001);
             $downloaded->disconnectWorksheets();
         } finally { fclose($file); }
         $book->disconnectWorksheets();

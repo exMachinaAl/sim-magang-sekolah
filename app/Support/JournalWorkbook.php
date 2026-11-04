@@ -5,7 +5,7 @@ use App\Models\Placement;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\{IOFactory, Spreadsheet};
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Worksheet\{PageSetup, Worksheet};
+use PhpOffice\PhpSpreadsheet\Worksheet\{PageMargins, PageSetup, Worksheet};
 
 class JournalWorkbook
 {
@@ -74,7 +74,12 @@ class JournalWorkbook
                 $sheet->getStyle('A4:L23')->getAlignment()->setWrapText(true);
                 $sheet->getRowDimension(23)->setRowHeight(32);
                 $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)->setPaperSize(PageSetup::PAPERSIZE_A4)
-                    ->setFitToWidth(1)->setFitToHeight(1)->setPrintArea('A1:L23');
+                    ->setFitToWidth(1)->setFitToHeight(1)->setHorizontalCentered(true)->setVerticalCentered(false)
+                    ->setPrintArea('A1:L23');
+                $sheet->getPageMargins()
+                    ->setLeft(PageMargins::fromMillimeters(8))->setRight(PageMargins::fromMillimeters(8))
+                    ->setTop(PageMargins::fromMillimeters(8))->setBottom(PageMargins::fromMillimeters(8));
+                $sheet->setPrintGridlines(false);
             }
         }
         foreach ($appendices as $journal) {
@@ -95,7 +100,12 @@ class JournalWorkbook
             $detail->getStyle('A1:A3')->getFont()->setBold(true);
             for ($r=1;$r<$row;$r++) $detail->getRowDimension($r)->setRowHeight(52);
             $detail->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4)->setOrientation(PageSetup::ORIENTATION_PORTRAIT)
-                ->setFitToWidth(1)->setFitToHeight(0)->setRowsToRepeatAtTopByStartAndEnd(1,3)->setPrintArea('A1:A'.($row-1));
+                ->setFitToWidth(1)->setFitToHeight(0)->setHorizontalCentered(true)->setVerticalCentered(false)
+                ->setRowsToRepeatAtTopByStartAndEnd(1,3)->setPrintArea('A1:A'.($row-1));
+            $detail->getPageMargins()
+                ->setLeft(PageMargins::fromMillimeters(12))->setRight(PageMargins::fromMillimeters(12))
+                ->setTop(PageMargins::fromMillimeters(12))->setBottom(PageMargins::fromMillimeters(12));
+            $detail->setPrintGridlines(false);
         }
         $data=new Worksheet($book,'Data Laravel'); $book->addSheet($data);
         $headers=['tanggal','ruang_kerja','waktu_mulai','waktu_selesai','kegiatan','keterangan','skor_angka','predikat','validasi_industri','pembimbing','waktu_scan','versi','review_sekolah'];

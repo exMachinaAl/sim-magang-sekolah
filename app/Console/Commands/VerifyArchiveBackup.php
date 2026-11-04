@@ -23,7 +23,9 @@ class VerifyArchiveBackup extends Command
         $this->line('Database sementara sudah dihapus; database kerja tidak ditimpa.');
         $this->line('Backup: '.$report['backup_path']);
         $this->line('Laporan: '.$report['report_file']);
-        $this->warn('Cakupan: arsip di database. Foto jurnal di filesystem, pemulihan server baru, dan transaksi konkuren belum dibuktikan oleh uji ini.');
+        $this->line('Foto jurnal: '.$report['restored_photos']['attachments'].' lampiran / '.$report['restored_photos']['unique_files'].' berkas unik dipulihkan dan hash cocok.');
+        $this->line('ZIP foto: '.dirname($report['backup_path']).DIRECTORY_SEPARATOR.$report['photo_backup_file']);
+        $this->warn('Cakupan: database, arsip dan foto jurnal pada lokasi terpisah di komputer ini. Pemulihan server baru dan beban produksi masih perlu diuji.');
         return self::SUCCESS;
     }
 }

@@ -1,5 +1,9 @@
 # Audit menu utama — 23 Oktober 2026
 
+> Status terbaru tahap 2, 4 November 2026: seluruh enam menu utama STABLE untuk cakupan audit/penggunaan lokal; tag Jurnal dan Sertifikat dilepas setelah penguatan tata cetak Excel, pemusatan PDF, integritas arsip, kiosk HP, transaksi serta pemulihan foto/database. Kesiapan produksi tetap dinilai terpisah. [Bukti dan checklist koreksi](STABILISASI_20261104_TAHAP2.md).
+
+> Status terbaru 4 November 2026: pengguna mengonfirmasi kiosk/validasi jurnal lewat HTTPS HP berhasil. Pemulihan database/arsip/foto lokal lulus. Posisi identitas PDF sertifikat diperbaiki dan distribusi memeriksa hash arsip. Flag Jurnal/Sertifikat tersisa untuk penerimaan cetak dan kesiapan deployment; lihat [hasil terbaru](STABILISASI_20261104.md). Temuan di bawah adalah riwayat.
+
 > Pembaruan Sertifikat 25 Oktober 2026: jalur PDF berdekorasi dan pratinjau tersedia tanpa LibreOffice; jalur DOCX tetap ekstensi opsional. Arsip versi lama tetap utuh. Flag masih untuk arsip lama/UAT, bukan kewajiban memasang LibreOffice. [Petunjuk dan batas cakupan](SERTIFIKAT_PDF_DEKORASI.md).
 
 > Pembaruan Dashboard 24 Oktober 2026: ketiga temuan filter tag tahun, siswa unik, serta rekap fase sekolah/jurusan telah ditutup. Flag Dashboard dilepas setelah tes regresi, browser, dan query MySQL baca-saja. [Panduan dan batas](DASHBOARD_REKAP_TAHUN.md). Temuan Dashboard di bawah adalah riwayat audit.

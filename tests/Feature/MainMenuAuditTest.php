@@ -20,7 +20,7 @@ class MainMenuAuditTest extends TestCase
         $this->seed();
     }
 
-    public function test_only_unresolved_modules_show_warnings_and_sidebar_tags(): void
+    public function test_all_audited_main_modules_are_stable_without_warnings_or_sidebar_tags(): void
     {
         $this->actingAs(User::where('role', 'koordinator')->firstOrFail());
         foreach ([
@@ -30,15 +30,8 @@ class MainMenuAuditTest extends TestCase
             'assessment-templates.index' => 'assessments',
         ] as $route => $module) {
             $response = $this->get(route($route))->assertOk();
-            if (in_array($module,['dashboard','timeline','monitoring','assessments'],true)) {
-                $response->assertDontSee('data-module-health=',false);
-            } else {
-                $response->assertSee('data-module-health="'.$module.'"', false)
-                    ->assertSee(config('main_menu_health.modules.'.$module.'.summary'))
-                    ->assertSee('Sudah terhubung:')->assertSee('Perbaikan berikutnya:');
-            }
-            $this->assertSame(2, substr_count($response->getContent(), 'class="module-health-badge '));
-            $response->assertDontSee('aria-label="Timeline PKL: UNSTABLE"',false);
+            $response->assertDontSee('data-module-health=',false);
+            $this->assertSame(0, substr_count($response->getContent(), 'class="module-health-badge '));
         }
     }
 
@@ -52,8 +45,7 @@ class MainMenuAuditTest extends TestCase
         $this->actingAs(User::where('role', 'siswa')->firstOrFail());
         foreach (['dashboard', 'timeline.index', 'journals.index', 'assessments.index', 'certificates.index'] as $route) {
             $response=$this->get(route($route))->assertOk()->assertDontSee('Periksa sumber jadwal di Kontrol PKL');
-            if (in_array($route,['dashboard','timeline.index','assessments.index'],true)) $response->assertDontSee('data-module-health=',false);
-            else $response->assertSee('data-module-health=', false);
+            $response->assertDontSee('data-module-health=',false);
         }
         $this->get(route('monitoring.index'))->assertForbidden();
         $this->get(route('internships.index'))->assertForbidden();
@@ -83,6 +75,8 @@ class MainMenuAuditTest extends TestCase
         $this->assertSame(['certificates', 'journals', 'timeline', 'monitoring', 'assessments', 'dashboard'], array_keys($report['modules']));
         $this->assertSame('stable',$report['modules']['timeline']['status']);
         $this->assertSame('stable',$report['modules']['monitoring']['status']);
+        $this->assertSame('stable',$report['modules']['journals']['status']);
+        $this->assertSame('stable',$report['modules']['certificates']['status']);
         $other = app(MainMenuAudit::class)->inspect('2027/2028');
         $this->assertSame(30, $other['metrics']['students_all_years']);
         $this->assertSame(0, $other['metrics']['rosters_in_year']);

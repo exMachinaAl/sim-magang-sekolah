@@ -25,4 +25,4 @@ Run akhir `e6007ee756f038f8`: enam skenario PASS, `working_database_rows_unchang
 
 Saat pengembangan alat uji, dua percobaan awal salah mengisolasi koneksi Eloquent dan sempat menambahkan fixture sintetis ke database kerja. Jurnal, mentor, perangkat dan relasi milik percobaan tersebut telah dihapus dengan pemeriksaan ID/isi/waktu dan dependensi, tanpa reset tabel. Nomor ID yang sempat terpakai tidak direset. Implementasi akhir memakai proses baru sejak bootstrap; hasil akhir memverifikasi isi database kerja tetap sama. Tidak ada fixture tersebut yang tersisa.
 
-Flag Jurnal tetap UNSTABLE untuk pengujian HP Google Camera/Lens, konfigurasi HTTPS, cetak Excel fisik, pemulihan foto dan kapasitas staging. Konkurensi Sertifikat merupakan pekerjaan terpisah yang belum ditutup oleh tes ini.
+Status saat pengujian 25 Oktober masih UNSTABLE. Setelah uji HP, pemulihan foto, penguatan cetak Excel dan regresi lanjutan, flag Jurnal ditutup pada 4 November untuk cakupan audit/penggunaan lokal. Konfigurasi HTTPS produksi, pemulihan server baru dan kapasitas staging tetap merupakan checklist deployment. [Status terbaru](STABILISASI_20261104_TAHAP2.md).

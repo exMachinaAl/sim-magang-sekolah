@@ -1,5 +1,13 @@
 # Pemulihan arsip database — 25 Oktober 2026
 
+## Pembaruan 4 November 2026
+
+Perintah yang sama kini juga membuat ZIP foto privat berisi manifest ID/path/ukuran/SHA-256 dan berkas yang dirujuk `journal_attachments`. ZIP dipulihkan ke folder sementara baru, dibandingkan dengan referensi database hasil restore, lalu ukuran/hash setiap berkas diperiksa. Path keluar direktori, foto hilang, ukuran berbeda dan isi ZIP yang berubah ditolak. Folder uji dibersihkan tanpa menulis ke storage foto aktif.
+
+Uji nyata 3 November lulus: **35 tabel, 10 berkas arsip, 12 referensi foto / 1 foto unik**, nol sertifikat terbit tanpa arsip aktif. Database sementara dibersihkan dan sumber tidak berubah. Bukti: `storage/app/private/backups/archive-probe-20261103-081550-e4ffd11da2edc8b4.json`, bersama `.sql` dan `-photos.zip` dengan nama dasar yang sama. Simpan ketiganya bersama di lokasi privat; SQL saja tidak berisi foto. Hash foto adalah pembanding saat backup, bukan bukti keaslian historis sebelum backup.
+
+Pemulihan server baru, kunci aplikasi, backup terjadwal dan kapasitas sekolah belum dibuktikan oleh uji lokal ini. Bagian di bawah mencatat hasil lama sebelum cakupan foto ditambahkan.
+
 Temuan flag Sertifikat mengenai uji pemulihan ditangani secara bertahap: **backup baru berhasil dipulihkan ke database MySQL lokal sementara**, tanpa menimpa database kerja. Hasil ini bukan klaim seluruh pemulihan sistem atau transaksi serentak sudah diuji.
 
 ## Hasil nyata

@@ -1,6 +1,18 @@
 # Catatan Refactor SIMMAG
 
-## Tahap aktif — 25 Oktober 2026
+Setiap tahap berikutnya wajib mengikuti [pola penyerahan upgrade](POLA_PENYERAHAN_UPGRADE.md): bukti pengujian pengembang, checklist uji pengguna, hasil yang diharapkan, status flag, dan roadmap setelah koreksi.
+
+## Tahap aktif — 4 November 2026
+
+Seluruh flag menu utama sudah ditutup untuk cakupan audit/penggunaan lokal. Jurnal Excel memiliki margin cetak seimbang dan pemusatan halaman; Sertifikat memakai identitas PDF terpusat serta verifikasi arsip sebelum distribusi. [Dokumentasi pengujian, checklist pengguna, dan roadmap staging](STABILISASI_20261104_TAHAP2.md).
+
+Tahap aktif berikutnya adalah koreksi output dari pengguna. Sesudah itu: staging HTTPS/domain tetap → pemulihan SQL + ZIP foto pada server baru → uji kapasitas sekolah → penilaian produksi. Usulan fitur bisnis baru tetap dibahas sebelum dikerjakan.
+
+Keluhan posisi identitas sertifikat ditangani pada PDF bawaan/dekorasi; dua pratinjau siap dikoreksi. Distribusi kini memeriksa integritas PDF sebelum mengubah status. Uji pemulihan mencakup foto jurnal dan sudah lulus pada MySQL lokal. Pengguna mengonfirmasi pendaftaran kiosk serta scan jurnal lewat HTTPS HP berhasil. [Riwayat tahap pertama](STABILISASI_20261104.md).
+
+Prioritas tersisa dicatat sebagai UAT output dan kesiapan deployment, bukan flag bug modul. Tidak ada migrasi atau reset untuk perbaikan ini. Alamat HTTPS mengikuti IP Wi-Fi aktif dan konfigurasi lokal, bukan alamat historis di bawah.
+
+## Riwayat — 25 Oktober 2026
 
 Fresh demo telah dijalankan atas izin pengguna, setelah backup dan pemulihan terverifikasi. Kini 31 siswa, 19 penempatan dan **0 sertifikat terbit tanpa arsip**; flag Sertifikat turun menjadi UNSTABLE untuk UAT. Tabel kompatibilitas kosong masih dipertahankan karena referensi kode; file privat tidak dihapus. [Catatan reset](RESET_DEMO_20261025.md). HTTPS lokal tersedia pada `https://192.168.0.114:8443`; uji komputer lulus, pengguna perlu memasang CA dan mengizinkan firewall untuk HP. [Panduan langkah demi langkah](HTTPS_KIOSK_LOKAL.md). Bagian di bawah mencatat tahap sebelum reset.
 

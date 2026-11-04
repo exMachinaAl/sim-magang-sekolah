@@ -25,6 +25,20 @@ class CertificateArchiveTest extends TestCase
         return Placement::whereHas('assessment',fn($q)=>$q->where('status','approved'))->whereDoesntHave('certificate')->firstOrFail();
     }
 
+    public function test_corrupt_issued_pdf_cannot_advance_distribution_or_create_history(): void
+    {
+        $c=Certificate::where('status','awaiting_print')->firstOrFail();
+        $document=$c->documents()->sole();
+        // Simulate storage corruption, bypassing the model's normal immutability guard.
+        DB::table('certificate_documents')->where('id',$document->id)->update(['pdf_base64'=>base64_encode('damaged archive')]);
+        $this->put(route('certificates.movement',$c),[
+            'version'=>$c->version,'expected_status'=>'awaiting_print','recipient'=>'TU',
+        ])->assertConflict();
+        $this->assertSame('awaiting_print',$c->fresh()->status);
+        $this->assertSame(0,$c->movements()->count());
+        $this->assertDatabaseMissing('audit_logs',['action'=>'certificate.moved','subject_id'=>$c->id]);
+    }
+
     public function test_generated_number_collision_is_validation_error_and_rolls_back_submission(): void
     {
         $p=$this->candidate();

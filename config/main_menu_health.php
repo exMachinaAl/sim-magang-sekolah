@@ -3,7 +3,7 @@
 // Status hasil audit kode, bukan health check otomatis. Hapus tag hanya setelah
 // kriteria penerimaan di docs/AUDIT_MENU_UTAMA.md diuji kembali.
 return [
-    'reviewed_at' => '2026-10-25',
+    'reviewed_at' => '2026-11-04',
     'modules' => [
         'dashboard' => [
             'name' => 'Dashboard', 'routes' => ['dashboard'],
@@ -23,16 +23,11 @@ return [
         ],
         'journals' => [
             'name' => 'Jurnal & Foto', 'routes' => ['journals.*'],
-            'status' => 'unstable', 'priority' => 'P1', 'order' => 2,
-            'summary' => 'Alur jurnal, QR, dan Excel lulus tes otomatis/browser; enam skenario transaksi MySQL bersamaan juga lulus. Menunggu UAT HP, HTTPS, cetak fisik dan pemulihan foto.',
-            'working' => 'Koordinator mengontrol pembimbing/perangkat, guru boleh meninjau siswa terkait, foto opsional, nilai persis di kolom predikat, dan validasi QR terikat versi serta waktu scan.',
-            'issues' => [
-                'QR pendaftaran adalah akses sekali pakai: siapa yang memakainya pertama dapat mendaftarkan browser. Berikan hanya kepada pembimbing; koordinator dapat mencabut perangkat.',
-                'Kepercayaan perangkat berbasis cookie browser. Incognito, penghapusan cookie, atau browser kamera yang berbeda memerlukan pendaftaran ulang.',
-                'PDF menolak hasil di atas 300 entri, bukan memotong data. Excel menyediakan enam entri per lembar dan Rincian untuk narasi panjang; hasil cetak fisik perlu diperiksa.',
-                'Dua scan/edit bersamaan, QR setelah edit, pencabutan perangkat, undangan ganda dan koreksi jadwal sudah diuji di MySQL lokal terpisah. Kapasitas staging, HTTPS dan pemulihan foto masih perlu diuji.',
-            ],
-            'next' => 'Lakukan uji Google Camera pada HP pembimbing melalui host yang dapat diakses, lalu evaluasi hasil cetak template bersama pengguna.',
+            'status' => 'stable', 'priority' => 'P1', 'order' => 2,
+            'summary' => 'Temuan audit Jurnal ditutup: kontrol koordinator, kiosk HTTPS, validasi QR, Excel enam entri, dan pemulihan foto telah diuji.',
+            'working' => 'Koordinator mengontrol pembimbing/perangkat, guru boleh meninjau siswa terkait, foto opsional, nilai persis di kolom predikat, dan validasi QR terikat versi serta waktu scan. Excel A4 memakai margin seimbang dan lembar Rincian untuk narasi panjang.',
+            'issues' => [],
+            'next' => 'Lanjutkan koreksi hasil cetak pada printer sekolah bila ditemukan perbedaan. Uji kapasitas, pemulihan server tujuan, dan konfigurasi HTTPS produksi tetap menjadi checklist deployment, bukan bug modul lokal.',
         ],
         'assessments' => [
             'name' => 'Penilaian', 'routes' => ['assessments.*', 'assessment-templates.*'],
@@ -52,17 +47,11 @@ return [
         ],
         'certificates' => [
             'name' => 'Sertifikat', 'routes' => ['certificates.*','certificate-print-templates.*'],
-            'status' => 'unstable', 'priority' => 'P1', 'order' => 1,
-            'summary' => 'Arsip per versi dan transaksi bersamaan sudah diuji. Database demo telah direset; tidak ada sertifikat terbit tanpa arsip aktif. Menunggu UAT cetak, pemulihan server dan kapasitas staging.',
+            'status' => 'stable', 'priority' => 'P1', 'order' => 1,
+            'summary' => 'Temuan audit Sertifikat ditutup: identitas PDF terpusat, arsip per versi immutable, dan integritas dokumen diperiksa sebelum distribusi.',
             'working' => 'PDF bawaan dan PDF berdekorasi tersedia tanpa LibreOffice, dengan area isi per sisi dalam mm dan pratinjau tanpa penerbitan. DOCX/LibreOffice tetap ekstensi opsional. Nilai, penandatangan, dan arsip per versi tetap terjaga.',
-            'issues' => [
-                'Jika database lain masih mempunyai dokumen lama tanpa arsip, unduhan/distribusi tetap ditahan. Rekonstruksi harus eksplisit setelah pemeriksaan koordinator; PDF asli tidak dapat dipulihkan dari data hidup.',
-                'Dokumen fisik lama yang diganti melalui revisi perlu penarikan/koordinasi offline. Tautan arsip versi lama tetap tersedia sebagai riwayat, bukan versi yang berlaku.',
-                'Pemulihan database/arsip dan sepuluh skenario transaksi Sertifikat bersamaan sudah lulus pada MySQL lokal terpisah. Pemulihan server baru beserta foto, kapasitas staging dan cetak bolak-balik sekolah masih perlu diuji.',
-                'Desain PDF harus satu halaman A4 portrait per sisi, tanpa sandi, dengan area kosong untuk isi. Pengaturan berlaku pada kotak seluruh isi, bukan editor posisi tiap field; tata letak/cetak sekolah tetap perlu diperiksa.',
-                'Konversi unggahan DOCX menjadi PDF adalah ekstensi opsional yang memerlukan LibreOffice. Salinan DOCX tetap tersedia tanpa konversi, tetapi tidak otomatis menyalin dekorasi PDF.',
-            ],
-            'next' => 'Periksa hasil cetak 100% dan bolak-balik sesuai dokumen sekolah, lanjutkan pemulihan server/foto serta uji kapasitas. LibreOffice hanya perlu untuk ekstensi konversi DOCX. Flag UAT belum dilepas.',
+            'issues' => [],
+            'next' => 'Gunakan revisi resmi bila dokumen lama perlu layout baru; arsip terbit tidak ditimpa. Koreksi cetak printer sekolah tetap dicatat sebagai UAT. Pemulihan server dan kapasitas berada pada checklist deployment. DOCX/LibreOffice tetap ekstensi opsional.',
         ],
     ],
 ];

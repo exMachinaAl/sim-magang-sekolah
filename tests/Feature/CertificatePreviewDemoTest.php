@@ -31,7 +31,8 @@ class CertificatePreviewDemoTest extends TestCase
         $c=$student->placements()->firstOrFail()->certificate;
         $this->actingAs(User::where('role','koordinator')->firstOrFail());
         $this->get(route('certificates.index'))->assertOk()->assertSee('data-certificate-demo',false)
-            ->assertSee('PDF bawaan sudah bisa digunakan.')->assertSee('belum siap, menunggu LibreOffice');
+            ->assertSee('tidak perlu LibreOffice')->assertDontSee('data-module-health="certificates"',false)
+            ->assertDontSee('Sertifikat: UNSTABLE');
         $this->get(route('certificates.show',$c))->assertOk()->assertSee('Unduh Sertifikat + Nilai PDF');
         $pdf=$this->get(route('certificates.pdf',$c))->assertOk()->getContent();
         $this->assertStringStartsWith('%PDF',$pdf);

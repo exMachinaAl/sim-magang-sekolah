@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 
@@ -98,7 +99,8 @@ class ArchiveBackupProbe
         if (!is_dir($directory) && !mkdir($directory,0700,true)) throw new RuntimeException('Direktori backup tidak dapat dibuat.');
         $file=$directory.'/archive-probe-'.now('Asia/Jakarta')->format('Ymd-His').'-'.$token.'.sql';
         $reportFile=substr($file,0,-4).'.json';
-        $report=['started_at'=>now('Asia/Jakarta')->toIso8601String(),'status'=>'failed','scope'=>'local_database_archives',
+        $photoZip=substr($file,0,-4).'-photos.zip';
+        $report=['started_at'=>now('Asia/Jakarta')->toIso8601String(),'status'=>'failed','scope'=>'local_database_archives_and_journal_photos',
             'temporary_database'=>$target,'temporary_database_removed'=>false,'backup_file'=>basename($file)];
         $created=false; $failure=null;
         $connectionName='archive_restore_probe_'.$token;
@@ -111,6 +113,13 @@ class ArchiveBackupProbe
             $integrity=app(ArchiveIntegrity::class)->inspect($source);
             $report['source_integrity']=$integrity;
             if ($integrity['failures']) throw new RuntimeException('Arsip sumber gagal pemeriksaan integritas; tidak dinyatakan aman walaupun dapat disalin.');
+            if (config('filesystems.disks.local.driver')!=='local') throw new RuntimeException('Uji foto memerlukan storage privat lokal.');
+            $photoRoot=Storage::disk('local')->path('');
+            $photos=app(JournalPhotoBackup::class);
+            $photoManifest=$photos->snapshot($source,$photoRoot);
+            $photos->write($photoManifest,$photoRoot,$photoZip);
+            $report['photo_backup_file']=basename($photoZip);
+            $report['photo_backup_sha256']=hash_file('sha256',$photoZip);
             $this->runProcess([$dumpBinary,...$args,'--single-transaction','--skip-lock-tables','--skip-add-locks','--no-tablespaces',
                 '--set-gtid-purged=OFF','--hex-blob','--result-file='.$file,$sourceName],$env);
             if (!is_file($file) || filesize($file)<100) throw new RuntimeException('Backup kosong.');
@@ -142,6 +151,8 @@ class ArchiveBackupProbe
             }
             $restoredIntegrity=app(ArchiveIntegrity::class)->inspect($restored);
             if ($integrity!==$restoredIntegrity || $restoredIntegrity['failures']) throw new RuntimeException('Pemeriksaan arsip hasil pemulihan gagal.');
+            $report['restored_photos']=$photos->verifyRestore($restored,$photoZip,$directory,$photoManifest);
+            if ($photoManifest!==$photos->snapshot($source,$photoRoot)) throw new RuntimeException('Foto sumber berubah selama pengujian; ulangi saat tidak ada perubahan.');
             if ($before!==$this->fingerprint($source)) throw new RuntimeException('Data sumber berubah selama pengujian; hasil belum dapat dinyatakan konsisten.');
             $report['tables']=$after;
             $report['restored_integrity']=$restoredIntegrity;

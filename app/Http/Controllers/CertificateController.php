@@ -128,7 +128,9 @@ class CertificateController {
   DB::transaction(function()use($c,$transitions,$d,$r){
    $locked=Certificate::whereKey($c->id)->lockForUpdate()->firstOrFail();
    abort_unless(isset($transitions[$locked->status]) && $locked->status===$d['expected_status'] && $locked->version===(int)$d['version'],422,'Versi/status dokumen berubah. Muat ulang halaman sebelum melanjutkan.');
-   abort_unless($locked->documents()->where('version',$locked->version)->whereNotNull('issued_at')->exists(),409,'Arsipkan dokumen versi ini sebelum distribusi.');
+   $document=$locked->documents()->where('version',$locked->version)->whereNotNull('issued_at')->first();
+   abort_unless($document,409,'Arsipkan dokumen versi ini sebelum distribusi.');
+   app(CertificateArchive::class)->bytes($document);
    $before=$locked->status;$next=$transitions[$before];
    if($next==='ready_pickup') {
     $r->validate(['pickup_at'=>'required|date','pickup_location'=>'required|string|max:200']);

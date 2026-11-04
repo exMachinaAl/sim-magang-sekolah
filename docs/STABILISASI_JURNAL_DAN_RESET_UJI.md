@@ -71,15 +71,16 @@ Skenario browser: login NIS dan koordinator; QR aktual dapat didekode; enrollmen
 
 ## Gerbang sebelum tag STABLE produksi
 
-Tag jurnal tetap UNSTABLE dengan keterangan **tes otomatis lulus, menunggu UAT**. Jangan sekadar menghapus tanda untuk terlihat selesai.
+Pembaruan tahap 2, 4 November 2026: pengguna mengonfirmasi pendaftaran perangkat dan validasi jurnal lewat HTTPS HP berhasil; pemulihan foto lokal lulus; tata cetak Excel diperkuat dan diuji setelah file disimpan/dibuka ulang. Jurnal kini STABLE untuk cakupan audit/penggunaan lokal. Penerimaan printer serta kesiapan deployment dicatat terpisah. [Bukti terbaru](STABILISASI_20261104_TAHAP2.md).
 
 - [x] Tes regresi, migrasi data lama, seeder berulang, dan fresh database uji lulus.
 - [x] Browser terpisah + cookie + CSRF + QR aktual + unduhan Excel lulus.
-- [ ] Uji HP siswa dan HP Dodi melalui domain yang benar, Google Camera/Lens membuka browser terdaftar, termasuk kehilangan cookie dan daftar ulang.
+- [x] Pendaftaran perangkat Dodi dan validasi jurnal melalui HTTPS HP pada Wi-Fi lokal: dikonfirmasi pengguna.
+- [ ] Konfirmasi UAT HP untuk kehilangan cookie/browser berbeda dan daftar ulang; tes otomatis sudah mencakup alur terkait.
 - [ ] Uji deployment HTTPS yang akan dipakai, proxy/secure cookie, akses jaringan, dan redaksi URL QR dari log server. HTTP hanya untuk dev local.
 - [ ] Buka Excel di perangkat sekolah dan cetak enam/tujuh entri, nilai kosong/0/desimal, narasi panjang + lembar Rincian, serta nama panjang. Verifikasi keterbacaan dan tanda validasi bersama customer.
 - [x] Uji transaksi MySQL lokal terpisah: dua tab siswa, dua scan bersamaan, perubahan isi saat scan, pencabutan saat scan, pendaftaran perangkat bersamaan, dan koreksi jadwal saat simpan. Enam skenario lulus pada 25 Oktober 2026. [Perintah dan bukti](UJI_MYSQL_JURNAL.md).
 - [ ] Ulangi pengujian di staging dengan konfigurasi deployment dan beban sekolah. Uji lokal enam skenario bukan bukti kapasitas atau seluruh kemungkinan urutan transaksi.
-- [ ] Uji backup/restore database dan foto di lingkungan terpisah.
+- [x] Uji backup/restore database dan foto pada database/folder lokal terpisah, 3 November 2026; server baru tetap perlu diuji.
 
-Setelah semua gerbang lulus, catat tanggal, perangkat, versi aplikasi, dan hasil sebelum mengubah status. Sertifikat masih prioritas P0 (snapshot dokumen); bug modul lain tetap tercatat di AUDIT_MENU_UTAMA.md dan tidak disamarkan sebagai selesai.
+Setelah semua gerbang lulus, catat tanggal, perangkat, versi aplikasi, dan hasil sebelum mengubah status. Snapshot dokumen Sertifikat telah diterapkan; prioritas berikutnya penerimaan tata letak/cetak serta kesiapan deployment, sesuai status terbaru di config/main_menu_health.php.

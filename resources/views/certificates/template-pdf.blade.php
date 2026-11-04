@@ -3,6 +3,7 @@
 @page{margin:32px}body{font-family:DejaVu Sans,sans-serif;font-size:10px;color:#222}h1{text-align:center;font-size:24px}h2{text-align:center;font-size:14px}.front{text-align:center;padding:55px 20px}.back{page-break-before:always}table{width:100%;border-collapse:collapse}th,td{border:1px solid #555;padding:6px;vertical-align:top}th{background:#eee}.name{font-size:22px;margin:28px 0}.statement{font-size:13px;line-height:1.8;margin:20px 0}.signature{margin-top:60px}.description{font-size:9px;line-height:1.4;margin-top:4px;white-space:pre-line}.identity{margin:14px 0;line-height:1.7}.right{text-align:right}tr{page-break-inside:avoid}
 </style></head><body>
 @php $assessment=$certificate->placement->assessment; $snapshot=$assessment->template_snapshot; $placement=$certificate->placement; @endphp
+@include('certificates.identity-layout')
 <section class="front">
 <h2>SMK NEGERI 1 CERME GRESIK</h2><h1>{{ $snapshot['certificate_heading'] }}</h1><p>Nomor: {{ $certificate->number }} · Versi {{ $certificate->version }}</p>
 <p>Diberikan kepada</p><div class="name">{{ $placement->student->user->name }}</div><p>NIS {{ $placement->student->nis }} · {{ $placement->student->class_name }}</p><p>{{ $snapshot['major'] }}</p>
