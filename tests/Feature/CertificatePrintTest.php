@@ -72,6 +72,8 @@ class CertificatePrintTest extends TestCase
             $this->assertSame('85,20',$values['nilai_hitung']); $this->assertSame('85,00',$values['nilai_akhir_pkl']);
             $this->assertSame('00001/0002',$values['nisn_nipd']);
             $this->assertStringContainsString('00123456789',$document->rendered_html);
+            $this->assertStringContainsString('table.identity { width:84%; margin:18px auto; table-layout:fixed; text-align:left; page-break-inside:avoid; }',$document->rendered_html);
+            $this->assertStringContainsString('.identity-summary, div.identity { width:84%; margin:14px auto; text-align:center; line-height:1.7; word-wrap:break-word; page-break-inside:avoid; }',$document->rendered_html);
             $this->assertSame($front==='kepala_sekolah_dan_industri',str_contains($document->rendered_html,'Pimpinan Uji'));
             $this->assertSame($back==='pembimbing_sekolah',str_contains($document->rendered_html,'00076543'));
             $this->put(route('certificates.approve',$certificate),['version'=>$certificate->version,'decision'=>'approved'])->assertSessionHasNoErrors();
@@ -225,6 +227,7 @@ class CertificatePrintTest extends TestCase
         $this->assertSame('85,00',$doc->snapshot['print']['values']['nilai_akhir_pkl']);
         $this->assertStringContainsString('Pimpinan Uji',$doc->rendered_html);
         $this->assertStringContainsString('00076543',$doc->rendered_html);
+        $this->assertStringContainsString('page-break-inside:avoid',$doc->rendered_html);
         $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString(base64_decode($doc->pdf_base64))));
         $this->assertNotSame($preview->getContent(),base64_decode($doc->pdf_base64));
         $this->put(route('certificates.approve',$c),['version'=>1,'decision'=>'approved'])->assertSessionHasNoErrors();

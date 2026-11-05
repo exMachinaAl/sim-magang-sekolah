@@ -38,7 +38,10 @@ Pemeriksaan lain lulus pada komputer lokal: APP_DEBUG mati, APP_KEY valid, URL H
 ## Pengujian pengembang
 
 - Tes pemeriksaan deployment dan proxy HTTPS: **6 tes lulus / 27 assertion**.
-- Regresi aplikasi lengkap setelah upgrade: **168 tes lulus / 2.953 assertion**, 200,33 detik. Log: `storage/logs/staging-readiness-full-20261104.log`.
+- Regresi aplikasi lengkap setelah upgrade FAQ/petunjuk kontekstual: **172 tes lulus / 3.016 assertion**, 123,09 detik.
+- Probe kapasitas lokal satu angkatan lulus tiga kali: 320 siswa, 256 penempatan, 5.120 jurnal, 128 penilaian dan 128 sertifikat. Waktu probe terlama 540,40 ms; database sementara dihapus dan database kerja terbukti tidak berubah. [Bukti dan cara mengulang](UPGRADE_KAPASITAS_20261105.md).
+- Alur browser Sertifikat dan pemeriksaan geometri dua halaman A4 lulus untuk pratinjau serta dokumen terbit; seluruh pusat identitas berada tepat pada 297,64 pt. [Bukti dan cara koreksi](UPGRADE_SERTIFIKAT_LAYOUT_20261105.md).
+- FAQ berbasis role dan tombol bantuan setiap halaman lulus tes browser untuk hover tertunda, klik, keyboard, pencarian, serta viewport ponsel. [Bukti dan cara uji](UPGRADE_FAQ_PANDUAN_20261106.md).
 - `composer check-platform-reqs --no-dev`: seluruh kebutuhan PHP 8.2 dan ekstensi paket lulus pada komputer pengembangan.
 - Cache konfigurasi dan kompilasi Blade berhasil dibuat lalu dibersihkan kembali; command staging tetap terdaftar.
 - Pemeriksaan tautan dokumentasi dan `git diff --check` lulus.
@@ -78,9 +81,9 @@ Jangan mengirim APP_KEY, password database, private key TLS, cookie, atau QR akt
 
 ## Roadmap lanjutan
 
-1. Pengguna mengoreksi PDF Sertifikat; Excel Jurnal sudah dinyatakan cukup bagus pada 4 November 2026.
+1. Render digital Sertifikat sudah lulus geometri dan inspeksi visual otomatis; penerimaan cetak fisik tetap menunggu kesempatan UAT. Excel Jurnal sudah dinyatakan cukup bagus pada 4 November 2026.
 2. Tentukan domain, server, web server/reverse proxy dan lokasi penyimpanan staging.
 3. Terapkan template konfigurasi di server staging dan selesaikan semua pemeriksaan wajib.
 4. Uji pemulihan SQL + ZIP foto pada lingkungan staging terpisah.
-5. Jalankan uji kapasitas setara satu angkatan, lalu susun keputusan kesiapan produksi dan backup terjadwal.
+5. Uji kapasitas data lokal setara satu angkatan sudah lulus. Jalankan load test HTTP bersamaan pada infrastruktur staging, lalu susun keputusan kesiapan produksi dan backup terjadwal.
 

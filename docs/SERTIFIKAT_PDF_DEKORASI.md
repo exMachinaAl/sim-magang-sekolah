@@ -1,5 +1,7 @@
 # Sertifikat PDF berdekorasi tanpa LibreOffice
 
+> Pembaruan 5 November 2026: layout digital kini memiliki pemeriksaan geometri berulang untuk A4, batas teks, pusat identitas, watermark dan artwork. Alur browser baru serta inspeksi pratinjau/terbit lulus. [Bukti upgrade dan cara uji](UPGRADE_SERTIFIKAT_LAYOUT_20261105.md).
+
 Pembaruan 25 Oktober 2026 menambah jalur cetak PHP mandiri. Kode DOCX/LibreOffice, konfigurasi `CERTIFICATE_LIBREOFFICE`, template DOCX lama dan unduh Word tetap dipertahankan. Ini ekstensi internal yang opsional, bukan pemasangan aplikasi atau plugin baru pada komputer pengguna.
 
 ## Coba contoh yang sudah disiapkan

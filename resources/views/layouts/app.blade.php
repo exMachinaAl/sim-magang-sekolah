@@ -30,7 +30,7 @@
  <a class="nav-link {{ request()->routeIs('users.*')?'active':'' }}" href="{{ route('users.index') }}"><span>⚙</span>Pengguna & Role</a>
  @endif
  <div class="sidebar-label">BANTUAN</div>
- <a class="nav-link {{ request()->routeIs('guide')?'active':'' }}" href="{{ route('guide') }}"><span>?</span>Panduan</a>
+ <a class="nav-link {{ request()->routeIs('guide')?'active':'' }}" href="{{ route('guide') }}"><span>?</span>FAQ &amp; Panduan</a>
  <a class="nav-link {{ request()->routeIs('profile')?'active':'' }}" href="{{ route('profile') }}"><span>♙</span>Ubah Kata Sandi</a>
  </nav>
  <div class="sidebar-bottom"><div class="avatar">{{ strtoupper(mb_substr(auth()->user()->name,0,1)) }}</div><div><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->roleLabel() }}</small></div></div>
@@ -48,6 +48,9 @@
 @include('partials.main-menu-warning')
 @yield('content')
 </main><footer class="footer">SIMMAG · SMKN 1 Cerme Gresik <span>Versi prototype Laravel · Data demo dapat diganti</span></footer></div></div>
+@php($contextHelp = app(\App\Support\HelpCenter::class)->page(request()->route()?->getName(), auth()->user()))
+@include('partials.context-help',['contextHelp'=>$contextHelp])
 <script>document.addEventListener('click',function(e){const el=e.target.closest('[data-confirm]');if(el&&!window.confirm(el.dataset.confirm)){e.preventDefault();}});</script>
+<script src="{{ asset('js/context-help.js') }}" defer></script>
 @stack('scripts')
 </body></html>

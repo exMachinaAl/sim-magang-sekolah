@@ -2,6 +2,12 @@
 
 Setiap tahap berikutnya wajib mengikuti [pola penyerahan upgrade](POLA_PENYERAHAN_UPGRADE.md): bukti pengujian pengembang, checklist uji pengguna, hasil yang diharapkan, status flag, dan roadmap setelah koreksi.
 
+Uji kapasitas data lokal setara satu angkatan selesai pada 5 November 2026. Tiga eksekusi final lulus dengan 320 siswa, 256 penempatan dan 5.120 jurnal; waktu terburuk 540,40 ms, database sementara selalu dihapus, dan database kerja tidak berubah. [Bukti, perubahan sebelum/sesudah, serta cara mengulang](UPGRADE_KAPASITAS_20261105.md). Load test HTTP staging tetap menunggu server/domain.
+
+Stabilitas layout Sertifikat diperkuat pada 5 November 2026. Alur browser penuh, 168 tes/2.962 assertion, inspeksi visual, dan pengukuran geometri pratinjau/terbit lulus; nama serta identitas dua sisi tepat di pusat halaman. [Bukti dan cara uji](UPGRADE_SERTIFIKAT_LAYOUT_20261105.md). Sisa Sertifikat hanya penerimaan printer fisik, bukan bug render digital yang diketahui.
+
+FAQ dan petunjuk kontekstual selesai pada 6 November 2026. Seluruh halaman akun memiliki tombol `?`; FAQ serta isi halaman menyesuaikan role siswa, guru, koordinator, dan admin. Regresi 172 tes/3.016 assertion, browser, mobile, keyboard, dan kapasitas lulus. [Bukti dan checklist manual](UPGRADE_FAQ_PANDUAN_20261106.md). Fitur stabil lokal dan tidak diberi flag.
+
 ## Tahap aktif — 4 November 2026
 
 Pengguna menyatakan hasil Excel Jurnal cukup bagus; UAT tersebut dicatat LULUS. Sertifikat akan dikoreksi berikutnya. Sambil menunggu, roadmap staging dimulai melalui [template, pemeriksaan read-only, dan panduan deployment](DEPLOYMENT_STAGING.md). Audit lokal saat ini menemukan dua perubahan wajib sebelum menjadi staging (`APP_ENV` dan `LOG_LEVEL`) serta dua saran (domain tetap dan akun demo).
@@ -10,7 +16,7 @@ Pemeriksaan deployment/proxy lulus 6 tes/27 assertion dan regresi lengkap lulus 
 
 Seluruh flag menu utama sudah ditutup untuk cakupan audit/penggunaan lokal. Jurnal Excel memiliki margin cetak seimbang dan pemusatan halaman; Sertifikat memakai identitas PDF terpusat serta verifikasi arsip sebelum distribusi. [Dokumentasi pengujian, checklist pengguna, dan roadmap staging](STABILISASI_20261104_TAHAP2.md).
 
-Tahap aktif berikutnya adalah koreksi output dari pengguna. Sesudah itu: staging HTTPS/domain tetap → pemulihan SQL + ZIP foto pada server baru → uji kapasitas sekolah → penilaian produksi. Usulan fitur bisnis baru tetap dibahas sebelum dikerjakan.
+Tahap lokal berikutnya hanya koreksi cetak fisik bila pengguna sudah dapat menguji. Jalur teknis selanjutnya: staging HTTPS/domain tetap → pemulihan SQL + ZIP foto pada server baru → load test HTTP staging → penilaian produksi. Uji kapasitas data dan render digital Sertifikat sudah lulus; usulan fitur bisnis baru tetap dibahas sebelum dikerjakan.
 
 Keluhan posisi identitas sertifikat ditangani pada PDF bawaan/dekorasi; dua pratinjau siap dikoreksi. Distribusi kini memeriksa integritas PDF sebelum mengubah status. Uji pemulihan mencakup foto jurnal dan sudah lulus pada MySQL lokal. Pengguna mengonfirmasi pendaftaran kiosk serta scan jurnal lewat HTTPS HP berhasil. [Riwayat tahap pertama](STABILISASI_20261104.md).
 

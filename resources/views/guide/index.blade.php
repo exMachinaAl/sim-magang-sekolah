@@ -1,25 +1,53 @@
 @extends('layouts.app')
-@section('title','Panduan Penggunaan')
-@section('breadcrumb','Bantuan / Panduan')
-@section('subtitle','Panduan singkat pengoperasian SIMMAG sesuai tahap pelaksanaan magang.')
+@section('title','FAQ & Panduan Penggunaan')
+@section('breadcrumb','Bantuan / FAQ & Panduan')
+@section('subtitle','Petunjuk yang disesuaikan dengan role '.auth()->user()->roleLabel().'.')
 @section('content')
-<div class="two-cols"><div class="card"><div class="card-head"><h2>Cara Mengisi Jurnal & Foto</h2></div><div class="steps-guide">
-<div class="guide-item"><span class="badge-step">1</span><div><h3>Masuk dan buka menu Jurnal</h3><p>Gunakan akun siswa, lalu pilih menu Jurnal & Foto pada sidebar.</p></div></div>
-<div class="guide-item"><span class="badge-step">2</span><div><h3>Pilih periode dan tanggal</h3><p>Masukkan tanggal kegiatan sesuai dengan periode penempatan PKL.</p></div></div>
-<div class="guide-item"><span class="badge-step">3</span><div><h3>Catat aktivitas dan nilai industri</h3><p>Isi kegiatan, ruang kerja, jam, dan peralatan/bahan. Hasil dan kendala opsional. Jika pembimbing memberi nilai, catat angka persisnya; jika belum, biarkan kosong.</p></div></div>
-<div class="guide-item"><span class="badge-step">4</span><div><h3>Foto opsional</h3><p>Boleh menyimpan tanpa foto. Maksimal 5 foto JPG/PNG, masing-masing 4 MB. Jangan unggah materi rahasia perusahaan.</p></div></div>
-<div class="guide-item"><span class="badge-step">5</span><div><h3>Tunjukkan ringkasan dan QR</h3><p>Simpan jurnal dan nilai, lalu tampilkan ringkasan kepada pembimbing industri. Setelah isi cocok, pembimbing membuka QR melalui kamera HP dan browser terpercaya; sistem mencatat waktu scan aktual. Scan boleh hari lain. Tanpa scan tetap tercatat sebagai belum divalidasi.</p></div></div>
-<div class="guide-item"><span class="badge-step">6</span><div><h3>Ekspor untuk buku</h3><p>Unduh Excel dari detail siswa. Satu lembar memuat maksimal enam entri, sisanya dilanjutkan. Predikat otomatis menampung angka nilai persis. Review sekolah berbeda dari validasi industri.</p></div></div>
-</div></div>
-<div class="stack"><div class="card"><div class="card-head"><h2>Alur Sertifikat</h2></div><div class="steps-guide">
-<div class="guide-item"><span class="badge-step">1</span><div><h3>Nilai akhir disahkan</h3><p>Nilai akhir industri diinput dan disahkan koordinator; tidak otomatis dihitung dari nilai jurnal. Sertifikat berbasis template tidak mensyaratkan scan semua jurnal. Skema sertifikat lama masih memiliki syarat review jurnal tersendiri.</p></div></div>
-<div class="guide-item"><span class="badge-step">2</span><div><h3>Persetujuan koordinator PKL</h3><p>Koordinator memvalidasi kelengkapan dan menyetujui penerbitan sertifikat.</p></div></div>
-<div class="guide-item"><span class="badge-step">3</span><div><h3>Cetak, tanda tangan, dan distribusi</h3><p>Unduh PDF dua halaman untuk dicetak bolak-balik: sertifikat di depan dan daftar nilai di belakang. Koordinator kemudian mencatat proses distribusinya.</p></div></div>
-<div class="guide-item"><span class="badge-step">4</span><div><h3>Ambil sertifikat</h3><p>Periksa jadwal serta lokasi di halaman detail dan konfirmasi penerimaan kepada koordinator.</p></div></div></div></div>
-<div class="card"><h2>Pertanyaan Umum</h2>
-<details><summary><strong>Bagaimana jika saya lupa kata sandi?</strong></summary><p class="small muted">Hubungi admin sekolah untuk pengaturan ulang akun.</p></details><div class="divider"></div>
-<details><summary><strong>Bagaimana mengubah jurnal yang sudah divalidasi?</strong></summary><p class="small muted">Klik Edit / isi nilai. Perubahan membuat versi baru yang belum divalidasi; riwayat versi lama tetap ada. Jika versi telah berubah di tab lain, muat ulang. Tanggal kegiatan tetap harus berada dalam jadwal Kontrol PKL.</p></details><div class="divider"></div>
-<details><summary><strong>Bagaimana mendaftarkan HP pembimbing?</strong></summary><p class="small muted">Koordinator membuka Jurnal → Pembimbing Industri & Perangkat QR, menugaskan siswa, lalu membuat QR pendaftaran sekali pakai. Pembimbing memindai dengan kameranya dan membuka link di browser yang akan dipakai seterusnya. Tanpa PIN. Jangan membagikan QR pendaftaran kepada siswa. Koordinator dapat mencabut perangkat.</p></details><div class="divider"></div>
-<details><summary><strong>Apakah harus membuat folder Google Drive sendiri?</strong></summary><p class="small muted">Tidak. Foto langsung diunggah melalui SIMMAG dan disimpan dalam penyimpanan privat server.</p></details>
-</div></div></div>
+<div class="card faq-intro">
+ <div><span class="faq-icon" aria-hidden="true">?</span></div>
+ <div><h2>Pusat bantuan {{ auth()->user()->roleLabel() }}</h2><p>{{ $introduction }}</p><p class="small muted">Petunjuk singkat juga tersedia melalui tombol <strong>?</strong> di kanan bawah setiap halaman.</p></div>
+</div>
+
+<div class="card" id="faq-search">
+ <label for="faq-query">Cari pertanyaan atau petunjuk</label>
+ <div class="faq-search-row"><input id="faq-query" type="search" placeholder="Contoh: jurnal, QR, nilai, sertifikat, kata sandi" autocomplete="off"><button class="btn btn-ghost" type="button" id="faq-clear">Bersihkan</button></div>
+ <p class="small muted" id="faq-result" role="status">Menampilkan seluruh panduan untuk role Anda.</p>
+</div>
+
+<div class="faq-sections" data-faq-list>
+@foreach($sections as $section)
+ <section class="card faq-section">
+  <div class="card-head"><div><h2>{{ $section['title'] }}</h2><p>{{ $section['description'] }}</p></div></div>
+  <div class="faq-list">
+  @foreach($section['items'] as $item)
+   <details class="faq-entry" data-faq-entry data-faq-text="{{ mb_strtolower($item['question'].' '.$item['answer']) }}">
+    <summary><span>{{ $item['question'] }}</span><span aria-hidden="true">+</span></summary>
+    <div class="faq-answer"><p>{{ $item['answer'] }}</p></div>
+   </details>
+  @endforeach
+  </div>
+ </section>
+@endforeach
+</div>
+
+<div class="card faq-empty" data-faq-empty hidden>
+ <span aria-hidden="true">?</span><h2>Petunjuk tidak ditemukan</h2><p>Coba kata yang lebih singkat. Jika masalah menyangkut data tertentu, catat nama/NIS, tahun, menu, dan pesan yang terlihat sebelum menghubungi petugas.</p>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+(() => {
+ const input=document.getElementById('faq-query'),clear=document.getElementById('faq-clear'),status=document.getElementById('faq-result');
+ const entries=Array.from(document.querySelectorAll('[data-faq-entry]')),empty=document.querySelector('[data-faq-empty]');
+ if(!input)return;
+ const filter=()=>{
+  const query=input.value.trim().toLocaleLowerCase('id-ID');let visible=0;
+  entries.forEach(entry=>{const show=!query||entry.dataset.faqText.includes(query);entry.hidden=!show;if(show)visible++;});
+  document.querySelectorAll('.faq-section').forEach(section=>{section.hidden=!Array.from(section.querySelectorAll('[data-faq-entry]')).some(entry=>!entry.hidden);});
+  empty.hidden=visible!==0;status.textContent=query?`${visible} petunjuk ditemukan untuk “${input.value.trim()}”.`:'Menampilkan seluruh panduan untuk role Anda.';
+ };
+ input.addEventListener('input',filter);clear.addEventListener('click',()=>{input.value='';filter();input.focus();});
+})();
+</script>
+@endpush

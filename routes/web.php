@@ -1,6 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController,DashboardController,MasterDataController,TimelineController,JournalController,MonitoringController,AssessmentController,CertificateController,UserController,ReportController,InternshipRosterController};
+use App\Http\Controllers\{AuthController,DashboardController,GuideController,MasterDataController,TimelineController,JournalController,MonitoringController,AssessmentController,CertificateController,UserController,ReportController,InternshipRosterController};
 Route::get('/',fn()=>redirect()->route('dashboard'));
 Route::prefix('industry')->middleware([\App\Http\Middleware\IndustryBrowser::class,'throttle:60,1'])->group(function(){
  Route::get('/',[\App\Http\Controllers\IndustryJournalController::class,'home'])->name('industry.home');
@@ -13,7 +13,7 @@ Route::middleware(['auth','active'])->group(function(){
  Route::get('dashboard',DashboardController::class)->name('dashboard');
  Route::get('profil',[AuthController::class,'profile'])->name('profile');
  Route::put('profil/password',[AuthController::class,'updatePassword'])->name('profile.password');
- Route::get('panduan',fn()=>view('guide.index'))->name('guide');
+ Route::get('panduan',GuideController::class)->name('guide');
  Route::get('timeline',[TimelineController::class,'index'])->name('timeline.index');
  Route::put('timeline/{event}/status',[TimelineController::class,'complete'])->middleware('role:koordinator,guru,siswa')->name('timeline.complete');
  Route::get('jurnal',[JournalController::class,'index'])->middleware('role:admin,koordinator,guru,siswa')->name('journals.index');
