@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Assessment, AssessmentTemplate, InternshipPeriod, InternshipRoster, Placement};
+use App\Models\{Assessment, AssessmentTemplate, AssessmentTemplateDefault, InternshipPeriod, InternshipRoster, Placement};
 use App\Support\{Access, Audit};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,20 +34,30 @@ class AssessmentController
                 ->latest()->paginate(10, ['*'], 'search_page')->withQueryString() : collect();
         $selectedPlacement = null;
         $selectedTemplate = null;
+        $defaultTemplateId = null;
         $assessment = null;
         $templates = collect();
         if ($user->isRole('koordinator') && $request->integer('placement_id')) {
             $selectedPlacement = Access::placement($user, $request->integer('placement_id'));
             $selectedPlacement->load(['student.user', 'company', 'assessment','roster','period']);
             $assessment = $selectedPlacement->assessment;
-            $templates = $selectedPlacement->roster ? AssessmentTemplate::where('major', $selectedPlacement->roster->major)->where('is_active', true)->latest()->get() : collect();
+            $defaultTemplateId = $selectedPlacement->roster
+                ? AssessmentTemplateDefault::where('major', $selectedPlacement->roster->major)->value('assessment_template_id')
+                : null;
+            $templates = $selectedPlacement->roster
+                ? AssessmentTemplate::where('major', $selectedPlacement->roster->major)->where('is_active', true)
+                    ->when($defaultTemplateId, fn ($query, $id) => $query->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$id]))
+                    ->latest('id')->get()
+                : collect();
             if ($request->integer('template_id')) {
                 $selectedTemplate = $templates->firstWhere('id', $request->integer('template_id'));
                 abort_unless($selectedTemplate, 422, 'Template tidak sesuai jurusan atau sudah dinonaktifkan.');
+            } elseif (! $assessment) {
+                $selectedTemplate = $templates->firstWhere('id', $defaultTemplateId) ?? $templates->first();
             }
         }
         $snapshot = $assessment?->template_snapshot ?: $selectedTemplate?->snapshot();
-        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'assessment', 'templates', 'snapshot', 'search','periods','majors'));
+        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'defaultTemplateId', 'assessment', 'templates', 'snapshot', 'search','periods','majors'));
     }
 
     public function store(Request $request)

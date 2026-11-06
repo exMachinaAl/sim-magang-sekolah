@@ -13,21 +13,17 @@
             <label>Judul sertifikat depan<input name="certificate_heading" value="{{ old('certificate_heading',$copy?->certificate_heading ?? 'SERTIFIKAT') }}" maxlength="100" required></label>
             <label>Keterangan kompetensi di sertifikat depan<textarea name="certificate_statement" maxlength="400" required>{{ old('certificate_statement',$copy?->certificate_statement ?? 'Telah mengikuti Praktik Kerja Lapangan sesuai kompetensi keahlian.') }}</textarea></label>
         </div>
+        <label class="inline-check"><input type="checkbox" name="is_default" value="1" @checked(old('is_default',!$copy))><span>Jadikan template default untuk jurusan ini</span></label>
+        <p class="small muted">Template default otomatis direkomendasikan saat koordinator membuka penilaian siswa. Template lain pada jurusan yang sama tetap dapat dipilih.</p>
         <h3>Ketentuan yang dinilai dan dicetak di belakang</h3>
         <p>Tambahkan aspek angka (0–100) atau isian teks. Bobot angka berjumlah 100%; teks berbobot 0%. Untuk pola lampiran 80/20: empat aspek masing-masing 20%, lalu laporan 20%.</p>
-        @php $initial=old('fields',$copy?->fields ?? [
-            ['label'=>'Soft skills','description'=>'Etos kerja, kerja sama, integritas dan tanggung jawab.','type'=>'score','weight'=>20],
-            ['label'=>'Hard skills','description'=>'Pelaksanaan pekerjaan sesuai prosedur dan keselamatan kerja.','type'=>'score','weight'=>20],
-            ['label'=>'Pengembangan hard skills','description'=>'Isi kompetensi khusus sesuai jurusan dan pekerjaan industri.','type'=>'score','weight'=>20],
-            ['label'=>'Kewirausahaan','description'=>'Pemahaman kegiatan usaha dan kemandirian di tempat kerja.','type'=>'score','weight'=>20],
-            ['label'=>'Laporan PKL','description'=>'Nilai laporan yang tercantum pada dokumen penilaian.','type'=>'score','weight'=>20],
-        ]); @endphp
+        @php $initial=old('fields',$copy?->fields ?? \App\Models\AssessmentTemplate::defaultFields()); @endphp
         <div id="template-fields"></div>
         <div class="form-footer"><button type="button" class="btn btn-secondary" id="add-field">Tambah aspek / ketentuan</button><span id="weight-total" aria-live="polite"></span><button class="btn btn-primary">Simpan Template Baru</button></div>
     </form>
 </div>
 <div class="card"><h2>Template tersedia</h2><div class="table-wrap"><table><thead><tr><th>Template</th><th>Jurusan</th><th>Ketentuan</th><th>Status</th><th></th></tr></thead><tbody>
-@forelse($templates as $template)<tr><td>{{ $template->name }}<div class="small muted">Versi #{{ $template->id }} @if($template->based_on_id) · Salinan #{{ $template->based_on_id }}@endif</div></td><td>{{ $template->major }}</td><td><details><summary>{{ count($template->fields) }} aspek</summary>@foreach($template->fields as $field)<p><strong>{{ $field['label'] }}</strong> ({{ $field['weight'] }}%)<br>{{ $field['description'] }}</p>@endforeach</details></td><td>{{ $template->is_active ? 'Aktif' : 'Diarsipkan' }}</td><td><a class="btn btn-secondary btn-sm" href="{{ route('assessment-templates.index',['copy'=>$template->id]) }}">Salin / revisi</a><form method="POST" action="{{ route('assessment-templates.toggle',$template) }}">@csrf @method('PUT')<input type="hidden" name="is_active" value="{{ $template->is_active ? 0 : 1 }}"><button class="btn btn-ghost btn-sm">{{ $template->is_active ? 'Arsipkan' : 'Aktifkan' }}</button></form></td></tr>@empty<tr><td colspan="5">Belum ada template. Buat ketentuan pertama di atas.</td></tr>@endforelse
+@forelse($templates as $template)<tr><td>{{ $template->name }}<div class="small muted">Versi #{{ $template->id }} @if($template->based_on_id) · Salinan #{{ $template->based_on_id }}@endif</div></td><td>{{ $template->major }}</td><td><details><summary>{{ count($template->fields) }} aspek</summary>@foreach($template->fields as $field)<p><strong>{{ $field['label'] }}</strong> ({{ $field['weight'] }}%)<br>{{ $field['description'] }}</p>@endforeach</details></td><td>{{ $template->is_active ? 'Aktif' : 'Diarsipkan' }} @if($defaultIds->get($template->major)===$template->id)<span class="pill active">Default</span>@endif</td><td><a class="btn btn-secondary btn-sm" href="{{ route('assessment-templates.index',['copy'=>$template->id]) }}">Salin / revisi</a>@if($template->is_active && $defaultIds->get($template->major)!==$template->id)<form method="POST" action="{{ route('assessment-templates.default',$template) }}">@csrf @method('PUT')<button class="btn btn-secondary btn-sm">Jadikan default</button></form>@endif<form method="POST" action="{{ route('assessment-templates.toggle',$template) }}">@csrf @method('PUT')<input type="hidden" name="is_active" value="{{ $template->is_active ? 0 : 1 }}"><button class="btn btn-ghost btn-sm">{{ $template->is_active ? 'Arsipkan' : 'Aktifkan' }}</button></form></td></tr>@empty<tr><td colspan="5">Belum ada template. Buat ketentuan pertama di atas.</td></tr>@endforelse
 </tbody></table></div>@include('partials.pager',['items'=>$templates])</div>
 @endsection
 @push('scripts')

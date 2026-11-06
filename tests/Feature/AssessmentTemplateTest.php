@@ -2,7 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Assessment, AssessmentTemplate, Certificate, Company, InternshipPeriod, Placement, Student, User};
+use App\Models\{Assessment, AssessmentTemplate, AssessmentTemplateDefault, Certificate, Company, InternshipPeriod, Placement, Student, User};
+use Database\Seeders\AssessmentDefaultTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -116,5 +117,94 @@ class AssessmentTemplateTest extends TestCase
         $data=$this->templateData(); $data['fields'][0]['weight']=50;
         $this->actingAs($this->actor('koordinator'))->post(route('assessment-templates.store'),$data)->assertSessionHasErrors('fields');
         $this->assertDatabaseCount('assessment_templates',0);
+    }
+
+    public function test_one_default_per_major_is_auto_selected_and_reassigned_when_archived(): void
+    {
+        $coordinator = $this->actor('koordinator');
+        $this->actingAs($coordinator);
+
+        $first = $this->templateData();
+        $first['name'] = 'TKJ pilihan pertama';
+        $this->post(route('assessment-templates.store'), $first)->assertSessionHasNoErrors();
+        $firstTemplate = AssessmentTemplate::where('name', $first['name'])->firstOrFail();
+        $this->assertSame($firstTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
+
+        $alternative = $this->templateData();
+        $alternative['name'] = 'TKJ alternatif';
+        $this->post(route('assessment-templates.store'), $alternative)->assertSessionHasNoErrors();
+        $alternativeTemplate = AssessmentTemplate::where('name', $alternative['name'])->firstOrFail();
+        $this->assertSame($firstTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
+
+        $preferred = $this->templateData();
+        $preferred['name'] = 'TKJ default baru';
+        $preferred['is_default'] = '1';
+        $this->post(route('assessment-templates.store'), $preferred)->assertSessionHasNoErrors();
+        $preferredTemplate = AssessmentTemplate::where('name', $preferred['name'])->firstOrFail();
+        $this->assertSame($preferredTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
+
+        $placement = $this->placement();
+        $this->get(route('assessments.index', ['placement_id' => $placement->id]))->assertOk()
+            ->assertSee('TKJ default baru')->assertSee('Default jurusan')->assertSee('dipilih otomatis');
+
+        $this->put(route('assessment-templates.toggle', $preferredTemplate), ['is_active' => 0])->assertSessionHasNoErrors();
+        $this->assertSame($alternativeTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
+
+        $this->put(route('assessment-templates.default', $firstTemplate))->assertSessionHasNoErrors();
+        $this->assertSame($firstTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'assessment_template.default_changed',
+            'subject_type' => class_basename(AssessmentTemplate::class),
+            'subject_id' => $firstTemplate->id,
+        ]);
+    }
+
+    public function test_standard_default_contains_five_numeric_aspects_with_equal_weights(): void
+    {
+        $fields = AssessmentTemplate::defaultFields('Teknik Komputer dan Jaringan');
+
+        $this->assertSame(['Soft skills', 'Hard skills', 'Pengembangan hard skills', 'Kewirausahaan', 'Laporan PKL'], array_column($fields, 'label'));
+        $this->assertSame([20, 20, 20, 20, 20], array_column($fields, 'weight'));
+        $this->assertSame(['score', 'score', 'score', 'score', 'score'], array_column($fields, 'type'));
+        $this->assertStringContainsString('Teknik Komputer dan Jaringan', $fields[2]['description']);
+    }
+
+    public function test_default_template_installer_is_repeatable_and_does_not_create_demo_students(): void
+    {
+        $coordinator = $this->actor('koordinator');
+
+        $this->seed(AssessmentDefaultTemplateSeeder::class);
+        $this->seed(AssessmentDefaultTemplateSeeder::class);
+
+        $this->assertDatabaseCount('assessment_template_defaults', 8);
+        $this->assertDatabaseCount('assessment_templates', 8);
+        $this->assertDatabaseCount('students', 0);
+        $this->assertSame(
+            $coordinator->id,
+            AssessmentTemplateDefault::query()->where('major', 'Teknik Komputer dan Jaringan')->value('updated_by')
+        );
+        $template = AssessmentTemplate::query()->where('major', 'Teknik Komputer dan Jaringan')->firstOrFail();
+        $this->assertSame([20, 20, 20, 20, 20], array_column($template->fields, 'weight'));
+
+        $custom = AssessmentTemplate::query()->create([
+            'name' => 'Pilihan koordinator',
+            'major' => 'Teknik Komputer dan Jaringan',
+            'certificate_heading' => 'SERTIFIKAT PKL',
+            'certificate_statement' => 'Ketentuan khusus yang disetujui.',
+            'fields' => AssessmentTemplate::defaultFields('Teknik Komputer dan Jaringan'),
+            'created_by' => $coordinator->id,
+            'is_active' => true,
+        ]);
+        AssessmentTemplateDefault::query()->where('major', $custom->major)->update([
+            'assessment_template_id' => $custom->id,
+            'updated_by' => $coordinator->id,
+        ]);
+
+        $this->seed(AssessmentDefaultTemplateSeeder::class);
+        $this->assertSame(
+            $custom->id,
+            AssessmentTemplateDefault::query()->where('major', $custom->major)->value('assessment_template_id')
+        );
+        $this->assertDatabaseCount('students', 0);
     }
 }

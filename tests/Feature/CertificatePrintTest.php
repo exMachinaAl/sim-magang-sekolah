@@ -123,6 +123,13 @@ class CertificatePrintTest extends TestCase
     public function test_builtin_custom_fields_support_text_without_forcing_four_aspects(): void
     {
         $p=Placement::whereHas('assessment',fn($q)=>$q->where('status','approved')->where('assessment_template_id','!=',$this->assessmentTemplate->id))->firstOrFail();
+        $snapshot=$p->assessment->template_snapshot;
+        $snapshot['fields']=[
+            ['key'=>'field_1','label'=>'Kompetensi khusus','description'=>'Nilai praktik industri.','type'=>'score','weight'=>100],
+            ['key'=>'field_2','label'=>'Lingkup pekerjaan','description'=>'Uraian bebas dari industri.','type'=>'text','weight'=>0],
+        ];
+        $p->assessment->update(['template_snapshot'=>$snapshot,'field_values'=>['field_1'=>89,'field_2'=>'Pekerjaan praktik sesuai jurusan.'],
+            'calculated_score'=>89,'final_score'=>89]);
         $t=$this->template(['assessment_template_id'=>$p->assessment->assessment_template_id,'grade_format'=>'custom']);
         $old=$this->placement; $this->placement=$p; $data=$this->submission($t);
         // Use an existing certificate's revision when this seeded placement already has a document.

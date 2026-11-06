@@ -103,7 +103,7 @@ class HelpCenter
                 'key' => 'template-penilaian',
                 'title' => 'Ketentuan penilaian per jurusan',
                 'summary' => 'Koordinator membuat template aspek yang berasal dari kebutuhan industri/sekolah dan menggunakannya untuk siswa pada jurusan yang sesuai.',
-                'steps' => ['Pilih jurusan dan beri nama versi template.', 'Tambahkan aspek angka atau teks beserta bobot dan keterangannya.', 'Periksa total bobot sebelum mengaktifkan template. Jangan memakai dropdown nilai siswa.'],
+                'steps' => ['Pilih jurusan dan beri nama versi template.', 'Tandai satu template aktif sebagai default jurusan; template itu dipilih otomatis saat penilaian baru dibuka.', 'Tambahkan aspek angka atau teks beserta bobot dan keterangannya, lalu periksa total bobot. Jangan memakai dropdown nilai siswa.'],
             ],
             'assessments.evidence.*' => [
                 'key' => 'bukti-penilaian',

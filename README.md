@@ -124,7 +124,7 @@ Untuk mengembangkan aplikasi ke tahap produksi, validasi dahulu bersama sekolah:
 
 ## Pengujian
 
-Setiap perbaikan/pembaruan harus ditutup dengan dokumentasi hasil tes, checklist yang perlu dicoba pengguna, status flag, serta roadmap tahap berikutnya. Gunakan [pola penyerahan upgrade](docs/POLA_PENYERAHAN_UPGRADE.md); hasil lokal terbaru ada di [upgrade FAQ dan petunjuk kontekstual, 6 November 2026](docs/UPGRADE_FAQ_PANDUAN_20261106.md).
+Setiap perbaikan/pembaruan harus ditutup dengan dokumentasi hasil tes, checklist yang perlu dicoba pengguna, status flag, serta roadmap tahap berikutnya. Gunakan [pola penyerahan upgrade](docs/POLA_PENYERAHAN_UPGRADE.md); hasil lokal terbaru ada di [upgrade sertifikat template tahap 1, 6 November 2026](docs/UPGRADE_SERTIFIKAT_TEMPLATE_TAHAP1_20261106.md).
 
 Sebelum memasang pada staging/produksi, ikuti [panduan deployment staging](docs/DEPLOYMENT_STAGING.md) dan jalankan `php artisan simmag:check-deployment --target=staging`. Perintah tersebut read-only dan tidak menampilkan kredensial. Uji volume data lokal dapat diulang dengan `php scripts/capacity-probe.php`; script hanya menerima MySQL lokal, memakai database sementara, dan langkah aman serta hasil acuannya ada di [dokumentasi upgrade kapasitas](docs/UPGRADE_KAPASITAS_20261105.md).
 

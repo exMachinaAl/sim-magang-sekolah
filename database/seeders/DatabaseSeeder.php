@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\{Assessment, AssessmentTemplate, Certificate, Company, InternshipPeriod, InternshipRoster, InternshipScheduleBatch, Journal, Placement, User};
+use App\Models\{Assessment, AssessmentTemplate, AssessmentTemplateDefault, Certificate, Company, InternshipPeriod, InternshipRoster, InternshipScheduleBatch, Journal, Placement, User};
 use App\Support\StudentEnrollment;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -36,15 +36,13 @@ class DatabaseSeeder extends Seeder
             $majors=InternshipRoster::officialMajors();
             $templates=[]; $batches=[];
             foreach ($majors as $major) {
-                $templates[$major]=AssessmentTemplate::firstOrCreate(['name'=>'Ketentuan Industri — '.$major],[
+                $templates[$major]=AssessmentTemplate::firstOrCreate(['name'=>'Default 80/20 — '.$major],[
                     'major'=>$major,'certificate_heading'=>'SERTIFIKAT PRAKTIK KERJA LAPANGAN',
                     'certificate_statement'=>'Telah melaksanakan Praktik Kerja Lapangan dan penilaian kompetensi dari industri.',
-                    'fields'=>[
-                        ['key'=>'field_1','label'=>'Kompetensi bidang','description'=>'Keterampilan praktik pada bidang '.$major.'.','type'=>'score','weight'=>60],
-                        ['key'=>'field_2','label'=>'Disiplin dan tanggung jawab','description'=>'Kehadiran, ketepatan waktu, dan penyelesaian tugas.','type'=>'score','weight'=>20],
-                        ['key'=>'field_3','label'=>'Keselamatan kerja','description'=>'Kepatuhan terhadap prosedur keselamatan kerja.','type'=>'score','weight'=>20],
-                        ['key'=>'field_4','label'=>'Lingkup pekerjaan','description'=>'Uraian pekerjaan yang dinilai oleh industri.','type'=>'text','weight'=>0],
-                    ],'created_by'=>$coordinator->id,'is_active'=>true,
+                    'fields'=>AssessmentTemplate::defaultFields($major),'created_by'=>$coordinator->id,'is_active'=>true,
+                ]);
+                AssessmentTemplateDefault::firstOrCreate(['major'=>$major],[
+                    'assessment_template_id'=>$templates[$major]->id,'updated_by'=>$coordinator->id,
                 ]);
                 $batches[$major]=InternshipScheduleBatch::firstOrCreate(['academic_year'=>$year,'name'=>'Batch Demo '.$major],[
                     'scope'=>'major','selected_majors'=>[$major],'starts_at'=>$today->copy()->subDays(14),
@@ -108,7 +106,7 @@ class DatabaseSeeder extends Seeder
                 Assessment::firstOrCreate(['placement_id'=>$placement->id],[
                     'assessor_id'=>$coordinator->id,'approved_by'=>$coordinator->id,'approved_at'=>now(),
                     'status'=>'approved','assessment_template_id'=>$template->id,'template_snapshot'=>$template->snapshot(),
-                    'field_values'=>['field_1'=>90,'field_2'=>85,'field_3'=>90,'field_4'=>'Pekerjaan praktik sesuai jurusan.'],
+                    'field_values'=>['field_1'=>90,'field_2'=>85,'field_3'=>90,'field_4'=>91,'field_5'=>89],
                     'calculated_score'=>89,'final_score'=>89,'industry_assessor'=>'Penilai Mitra Industri (Demo)',
                     'assessed_on'=>$roster->internship_ends_at,'revision'=>1,'notes'=>'Nilai industri dicatat koordinator; contoh fiktif.',
                 ]);

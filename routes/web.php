@@ -59,6 +59,7 @@ Route::middleware(['auth','active'])->group(function(){
   Route::put('jurnal-perangkat-industri/{device}/cabut',[\App\Http\Controllers\IndustryJournalController::class,'revoke'])->name('journals.devices.revoke');
   Route::get('template-penilaian',[\App\Http\Controllers\AssessmentTemplateController::class,'index'])->name('assessment-templates.index');
   Route::post('template-penilaian',[\App\Http\Controllers\AssessmentTemplateController::class,'store'])->name('assessment-templates.store');
+  Route::put('template-penilaian/{template}/default',[\App\Http\Controllers\AssessmentTemplateController::class,'makeDefault'])->name('assessment-templates.default');
   Route::put('template-penilaian/{template}',[\App\Http\Controllers\AssessmentTemplateController::class,'toggle'])->name('assessment-templates.toggle');
   Route::get('penempatan',[\App\Http\Controllers\PlacementController::class,'index'])->name('placements.index');
   Route::post('penempatan',[\App\Http\Controllers\PlacementController::class,'store'])->name('placements.store');
