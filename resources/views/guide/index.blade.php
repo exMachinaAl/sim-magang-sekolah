@@ -20,9 +20,9 @@
   <div class="card-head"><div><h2>{{ $section['title'] }}</h2><p>{{ $section['description'] }}</p></div></div>
   <div class="faq-list">
   @foreach($section['items'] as $item)
-   <details class="faq-entry" data-faq-entry data-faq-text="{{ mb_strtolower($item['question'].' '.$item['answer']) }}">
+   <details class="faq-entry" data-faq-entry data-faq-text="{{ mb_strtolower($item['question'].' '.$item['answer'].' '.implode(' ',$item['steps'] ?? []).' '.($item['note'] ?? '')) }}">
     <summary><span>{{ $item['question'] }}</span><span aria-hidden="true">+</span></summary>
-    <div class="faq-answer"><p>{{ $item['answer'] }}</p></div>
+    <div class="faq-answer"><p>{{ $item['answer'] }}</p>@if(!empty($item['steps']))<ol>@foreach($item['steps'] as $step)<li>{{ $step }}</li>@endforeach</ol>@endif @if(!empty($item['note']))<p class="faq-note"><strong>Catatan:</strong> {{ $item['note'] }}</p>@endif</div>
    </details>
   @endforeach
   </div>
@@ -41,13 +41,14 @@
  const input=document.getElementById('faq-query'),clear=document.getElementById('faq-clear'),status=document.getElementById('faq-result');
  const entries=Array.from(document.querySelectorAll('[data-faq-entry]')),empty=document.querySelector('[data-faq-empty]');
  if(!input)return;
+ const initial=new URLSearchParams(window.location.search).get('q');if(initial)input.value=initial;
  const filter=()=>{
   const query=input.value.trim().toLocaleLowerCase('id-ID');let visible=0;
   entries.forEach(entry=>{const show=!query||entry.dataset.faqText.includes(query);entry.hidden=!show;if(show)visible++;});
   document.querySelectorAll('.faq-section').forEach(section=>{section.hidden=!Array.from(section.querySelectorAll('[data-faq-entry]')).some(entry=>!entry.hidden);});
   empty.hidden=visible!==0;status.textContent=query?`${visible} petunjuk ditemukan untuk “${input.value.trim()}”.`:'Menampilkan seluruh panduan untuk role Anda.';
  };
- input.addEventListener('input',filter);clear.addEventListener('click',()=>{input.value='';filter();input.focus();});
+ input.addEventListener('input',filter);clear.addEventListener('click',()=>{input.value='';filter();input.focus();});filter();
 })();
 </script>
 @endpush

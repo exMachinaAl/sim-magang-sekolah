@@ -43,7 +43,7 @@ class HelpCenter
             ],
         ];
 
-        return [$common, $this->roleSection($user->role)];
+        return [$common, $this->roleSection($user->role), $this->certificateSection($user->role)];
     }
 
     public function roleIntroduction(User $user): string
@@ -83,18 +83,21 @@ class HelpCenter
             ],
             'certificate-print-templates.*' => [
                 'key' => 'template-sertifikat',
+                'faq_query' => 'template sertifikat',
                 'title' => 'Template cetak sertifikat',
-                'summary' => 'Template mengikat ketentuan nilai, variasi penandatangan, dan tata letak dokumen untuk penerbitan versi berikutnya.',
-                'steps' => ['Pilih template penilaian/jurusan yang sesuai.', 'Isi identitas sekolah dan pemetaan nilai tanpa mengambil data siswa dari dropdown massal.', 'Gunakan pratinjau sebelum membuat versi sertifikat. Template lama tidak ditimpa.'],
+                'summary' => 'Desain cetak mengatur tampilan, format nilai, dan pola penandatangan tanpa mengganti ketentuan maupun nilai siswa.',
+                'steps' => ['Uji PDF bawaan tanpa unggahan terlebih dahulu untuk memastikan data dan pengaturan benar.', 'Pilih template penilaian sebagai sumber susunan aspek, lalu tentukan jurusan asal desain.', 'Gunakan PDF aplikasi + dekorasi tanpa LibreOffice, atau DOCX teks + PDF dekorasi bila font/posisi harus mengikuti Word.', 'Jangan jadikan default sebelum kedua pratinjau benar. Desain dan arsip lama tidak ditimpa.'],
             ],
             'certificates.prepare' => [
                 'key' => 'sertifikat-siapkan',
+                'faq_query' => 'siapkan sertifikat',
                 'title' => 'Siapkan sertifikat',
                 'summary' => 'Lengkapi identitas cetak dan periksa pratinjau sebelum membuat atau merevisi sertifikat.',
-                'steps' => ['Pastikan nilai telah disahkan dan jadwal PKL lengkap.', 'Isi data cetak sesuai dokumen sumber industri.', 'Buka pratinjau dua halaman, lalu ajukan. Revisi membuat versi baru dan tidak menimpa arsip lama.'],
+                'steps' => ['Pastikan nilai telah disahkan dan jadwal PKL lengkap.', 'Isi data cetak sesuai dokumen sumber industri.', 'Buka pratinjau digital dan cetak bersih bila tersedia, lalu ajukan. Revisi membuat versi baru dan tidak menimpa arsip lama.'],
             ],
             'certificates.show' => [
                 'key' => 'sertifikat-detail',
+                'faq_query' => 'terbitkan sertifikat',
                 'title' => 'Detail & arsip sertifikat',
                 'summary' => 'Halaman ini menampilkan versi, persetujuan, arsip PDF/DOCX, dan riwayat distribusi sertifikat.',
                 'steps' => ['Periksa nomor serta versi dokumen.', 'Koordinator menyetujui atau mengajukan revisi berdasarkan sumber yang benar.', 'Catat pergerakan fisik sertifikat secara berurutan sampai diserahkan.'],
@@ -209,6 +212,7 @@ class HelpCenter
             ],
             'certificates.*' => [
                 'key' => 'sertifikat',
+                'faq_query' => 'sertifikat',
                 'title' => 'Sertifikat',
                 'summary' => 'Sertifikat memakai nilai yang telah disahkan, arsip PDF per versi, persetujuan koordinator, dan riwayat distribusi.',
                 'steps' => ['Cari dengan nama/NIS dan pastikan versi yang dibuka benar.', 'Periksa dua halaman: identitas depan dan daftar nilai belakang.', 'Versi terbit tidak dibangun ulang dari data hidup; koreksi dilakukan melalui revisi resmi.'],
@@ -278,5 +282,89 @@ class HelpCenter
                 'items' => [],
             ],
         };
+    }
+
+    private function certificateSection(string $role): array
+    {
+        $items = [
+            [
+                'question' => 'Apa perbedaan template nilai, desain cetak, default jurusan, dan sertifikat siswa?',
+                'answer' => 'Template nilai menentukan aspek yang dinilai. Desain cetak menentukan tampilan dan penandatangan. Default jurusan hanya memilih desain awal. Sertifikat siswa adalah arsip hasil akhir dari nilai, identitas, dan desain pada saat diajukan.',
+                'note' => 'Perusahaan dan pembimbing adalah data isi sertifikat, bukan alasan membuat template baru.',
+            ],
+            [
+                'question' => 'Bagaimana memeriksa sertifikat yang sudah diterbitkan?',
+                'answer' => 'Buka Sertifikat, cari nama/NIS, lalu buka Detail. Unduhan selalu memakai arsip versi yang dipilih dan tidak membangun ulang isi dari data hidup.',
+                'steps' => ['Periksa nomor dan versi.', 'Unduh PDF sertifikat atau dua keluaran bila tersedia.', 'Cocokkan halaman depan, daftar nilai belakang, dan identitas penandatangan.'],
+            ],
+            [
+                'question' => 'Apa beda PDF digital berdekorasi dan PDF cetak tanpa dekorasi?',
+                'answer' => 'Keduanya memakai snapshot data yang sama. PDF digital sudah menyatukan teks dengan dekorasi. PDF cetak bersih hanya berisi teks untuk kertas fisik yang dekorasinya sudah tercetak.',
+                'note' => 'Cetak PDF bersih dengan Actual size / 100%, bukan Fit to page.',
+            ],
+            [
+                'question' => 'Mengapa sertifikat lama tidak ikut berubah setelah template diperbaiki?',
+                'answer' => 'Arsip terbit bersifat tetap untuk audit. Koreksi dilakukan melalui Ajukan Versi Baru, kemudian diperiksa dan disetujui ulang. Sistem sengaja tidak menimpa dokumen lama.',
+            ],
+        ];
+
+        if ($role === 'koordinator') {
+            array_push($items,
+                [
+                    'question' => 'Bagaimana urutan pengujian template sertifikat yang aman?',
+                    'answer' => 'Uji bertahap agar sumber kesalahan mudah diketahui.',
+                    'steps' => ['Buka contoh DEMO-SERT-001 dan unduh PDF.', 'Buat PDF bawaan tanpa unggahan.', 'Pratinjau tanpa mengajukan.', 'Buat PDF aplikasi + dekorasi dan bandingkan dua keluaran.', 'Ajukan versi demo dan setujui.', 'Terakhir, uji DOCX melalui LibreOffice lalu gunakan template asli sekolah.'],
+                    'note' => 'Berhenti pada tahap pertama yang gagal dan catat pesan lengkapnya.',
+                ],
+                [
+                    'question' => 'Bagaimana membuat template fixed tanpa mengunggah file?',
+                    'answer' => 'Pilih sumber susunan nilai, isi identitas sekolah, pilih pola depan/belakang, gunakan Aspek bebas, lalu pilih PDF bawaan. Biarkan pemetaan kosong dan jangan jadikan default sebelum pratinjau diterima.',
+                    'steps' => ['Pilih template nilai jurusan.', 'Isi nama versi dan identitas sekolah.', 'Pilih PDF bawaan.', 'Simpan sebagai pilihan tambahan.', 'Pilih desain pada Siapkan Sertifikat dan buka Pratinjau PDF.'],
+                ],
+                [
+                    'question' => 'Bagaimana membuat dua keluaran tanpa LibreOffice?',
+                    'answer' => 'Pilih PDF aplikasi + dekorasi. Unggah satu PDF A4 portrait per sisi yang hanya berisi ornamen, lalu gunakan koordinat default terlebih dahulu.',
+                    'steps' => ['Unduh contoh dekorasi depan dan belakang.', 'Unggah kembali ke sisi yang sesuai.', 'Simpan tanpa menjadikannya default.', 'Buka pratinjau digital dan cetak bersih.', 'Pastikan data sama tetapi dekorasinya berbeda.'],
+                ],
+                [
+                    'question' => 'Bagaimana memakai template DOCX asli sekolah?',
+                    'answer' => 'Pilih DOCX teks asli + PDF dekorasi. DOCX mengatur kalimat, font, tabel, dan posisi; PDF hanya mengatur ornamen digital. LibreOffice server harus aktif.',
+                    'steps' => ['Uji DOCX contoh sistem terlebih dahulu.', 'Pastikan tiap DOCX tepat satu halaman A4 portrait.', 'Pertahankan token ${...} pada posisi dan font final.', 'Pilih tipe penandatangan yang sesuai isi DOCX.', 'Unggah PDF dekorasi tanpa teks data.', 'Periksa dua pratinjau sebelum mengajukan.'],
+                    'note' => 'Font yang dipakai DOCX harus terpasang pada server agar posisi hasil PDF konsisten.',
+                ],
+                [
+                    'question' => 'Apa contoh isian untuk menguji template asli sekolah?',
+                    'answer' => 'Gunakan data demo terlebih dahulu dan jangan jadikan desain default.',
+                    'steps' => ['Sumber: DEMO siap uji — Kuliner 80/20.', 'Nama: UJI 03 - Template Asli Sekolah.', 'Depan: Kepala sekolah dan industri.', 'Belakang: Pembimbing industri.', 'Susunan nilai: format 80/20; petakan lima label ke field bernama sama.', 'Format awal: DOCX teks saja melalui LibreOffice.', 'DOCX depan: sertifikat_kepala_sekolah_dan_industri.docx.', 'DOCX belakang: unduh contoh Pembimbing industri — DOCX.', 'Simpan, pilih pada Coba revisi contoh, lalu buka Pratinjau PDF tanpa mengajukan.'],
+                    'note' => 'Setelah PDF teks presisi, buat versi DOCX + PDF dekorasi untuk keluaran digital. Jangan menambahkan dekorasi yang sama ke DOCX dan PDF sekaligus.',
+                ],
+                [
+                    'question' => 'Apa yang harus diisi pada halaman Siapkan Sertifikat?',
+                    'answer' => 'Tempat lahir dan NISN/NIPD mengikuti data resmi siswa. Bidang pekerjaan menggambarkan pekerjaan saat PKL. Tanggal pengesahan tidak boleh di masa depan. Nama pimpinan industri hanya muncul untuk sertifikat dua pihak; nama/NIP pembimbing sekolah hanya muncul bila pola belakang memilih pembimbing sekolah.',
+                ],
+                [
+                    'question' => 'Apa yang dilakukan bila template gagal disimpan atau dipratinjau?',
+                    'answer' => 'Gunakan pesan error untuk menentukan sumber masalah dan jangan mengganti banyak hal sekaligus.',
+                    'steps' => ['Token wajib hilang: unduh contoh dan cocokkan token.', 'Token tidak dikenal: hapus atau ganti token tersebut.', 'Sumber eksternal ditolak: unggah melalui sistem agar mail merge lama dibersihkan; makro dan tautan aktif tetap ditolak.', 'Lebih dari satu halaman: pendekkan isi atau rapikan margin DOCX.', 'Konversi gagal: periksa LibreOffice dan font server.', 'Data cetak belum lengkap: kembali ke form siswa dan isi field yang disebutkan.'],
+                ],
+                [
+                    'question' => 'Kapan desain boleh dijadikan default jurusan?',
+                    'answer' => 'Setelah pratinjau depan-belakang, digital, dan cetak bersih diterima. Mengubah default hanya memengaruhi pilihan awal untuk pengajuan berikutnya; arsip dan sertifikat lama tidak berubah.',
+                ]
+            );
+        }
+
+        if ($role === 'admin') {
+            $items[] = [
+                'question' => 'Apa kebutuhan server untuk template DOCX?',
+                'answer' => 'Pasang LibreOffice dan font yang dipakai sekolah, lalu isi CERTIFICATE_LIBREOFFICE dengan path absolut soffice. PDF bawaan dan PDF aplikasi + dekorasi tidak bergantung pada LibreOffice.',
+            ];
+        }
+
+        return [
+            'title' => 'Panduan sertifikat',
+            'description' => 'Alur dari pemilihan desain sampai dua keluaran dan arsip versi.',
+            'items' => $items,
+        ];
     }
 }

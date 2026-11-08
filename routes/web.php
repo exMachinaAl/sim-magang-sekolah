@@ -36,6 +36,7 @@ Route::middleware(['auth','active'])->group(function(){
  Route::get('bukti-penilaian/{evidence}',[\App\Http\Controllers\AssessmentEvidenceController::class,'download'])->middleware('role:admin,koordinator')->name('assessments.evidence.download');
  Route::get('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'index'])->middleware('role:koordinator')->name('certificate-print-templates.index');
  Route::post('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'store'])->middleware('role:koordinator')->name('certificate-print-templates.store');
+ Route::put('sertifikat/template/{template}/default', [\App\Http\Controllers\CertificatePrintTemplateController::class,'makeDefault'])->middleware('role:koordinator')->name('certificate-print-templates.default');
  Route::get('sertifikat/template/contoh/{variant}', [\App\Http\Controllers\CertificatePrintTemplateController::class,'sample'])->middleware('role:koordinator')->name('certificate-print-templates.sample');
  Route::get('sertifikat/template/contoh-pdf/{side}', [\App\Http\Controllers\CertificatePrintTemplateController::class,'pdfSample'])->middleware('role:koordinator')->name('certificate-print-templates.pdf-sample');
  Route::post('sertifikat/pratinjau/{placement}',\App\Http\Controllers\CertificatePreviewController::class)->middleware(['role:koordinator','throttle:15,1'])->name('certificates.preview');
@@ -44,6 +45,7 @@ Route::middleware(['auth','active'])->group(function(){
  Route::post('sertifikat',[CertificateController::class,'create'])->middleware('role:koordinator')->name('certificates.create');
  Route::get('sertifikat/{certificate}',[CertificateController::class,'show'])->name('certificates.show');
  Route::get('sertifikat/{certificate}/pdf',[CertificateController::class,'pdf'])->name('certificates.pdf');
+ Route::get('sertifikat/{certificate}/pdf-cetak',[CertificateController::class,'printPdf'])->name('certificates.print-pdf');
  Route::get('sertifikat/{certificate}/docx/{side}',[CertificateController::class,'docx'])->name('certificates.docx');
  Route::post('sertifikat/{certificate}/siapkan-docx',[CertificateController::class,'prepareWord'])->middleware('role:koordinator')->name('certificates.prepare-word');
  Route::put('sertifikat/{certificate}/persetujuan',[CertificateController::class,'approve'])->middleware('role:koordinator')->name('certificates.approve');

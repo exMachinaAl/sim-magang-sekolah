@@ -69,7 +69,7 @@ class CertificatePdfBackground
         foreach ($print['values'] as $value) if (mb_strlen((string)$value)>2000) CertificatePrint::fail('Teks PDF terlalu panjang; ringkas isian sebelum mencetak.');
         $template=CertificatePrintTemplate::findOrFail($print['template_id']);
         $layout=$this->validateLayout($print['pdf_background']['layout']);
-        $pdf=new Fpdi; $html=[];
+        $pdf=new Fpdi; $plainPdf=new Fpdi; $html=[];
         foreach (['front','back'] as $side) {
             $bytes=base64_decode($template->{$side.'_pdf'}??'',true);
             $expected=$print['pdf_background'][$side.'_hash'];
@@ -83,14 +83,47 @@ class CertificatePdfBackground
             if ($content->getDomPDF()->getCanvas()->get_page_count()!==1) {
                 CertificatePrint::fail('Isi '.$side.' melebihi area PDF. Perbesar area isi atau ringkas ketentuan; nilai tidak dipotong atau diperkecil otomatis.');
             }
-            $overlay=$this->page($pdf,$content->output());
+            $contentBytes=$content->output();
+            $overlay=$this->page($pdf,$contentBytes);
+            $plainPage=$this->page($plainPdf,$contentBytes);
             unset($content);
             gc_collect_cycles();
             $pdf->AddPage('P',[210,297]);
             $pdf->useTemplate($background,0,0,210,297);
             $pdf->useTemplate($overlay,0,0,210,297);
+            $plainPdf->AddPage('P',[210,297]);
+            $plainPdf->useTemplate($plainPage,0,0,210,297);
         }
-        return ['pdf'=>$pdf->Output('S'),'html'=>implode("\n<!-- Halaman PDF berikutnya -->\n",$html)];
+        return ['pdf'=>$pdf->Output('S'),'print_pdf'=>$plainPdf->Output('S'),
+            'html'=>implode("\n<!-- Halaman PDF berikutnya -->\n",$html)];
+    }
+
+    public function decorateDocument(CertificatePrintTemplate $template, string $plainPdf, array $expected): string
+    {
+        $pdf=new Fpdi;
+        foreach (['front'=>1,'back'=>2] as $side=>$pageNumber) {
+            try {
+                $count=$pdf->setSourceFile(StreamReader::createByString($plainPdf));
+                if ($count!==2) CertificatePrint::fail('PDF teks hasil DOCX harus tepat dua halaman.');
+                $content=$pdf->importPage($pageNumber);
+                $size=$pdf->getTemplateSize($content);
+                if (abs($size['width']-210)>2 || abs($size['height']-297)>2) {
+                    CertificatePrint::fail('PDF teks hasil DOCX harus A4 portrait untuk dekorasi digital.');
+                }
+            } catch (ValidationException $exception) { throw $exception; }
+            catch (\Throwable $exception) { CertificatePrint::fail('PDF teks hasil DOCX tidak dapat dibaca untuk dekorasi digital.'); }
+
+            $backgroundBytes=base64_decode($template->{$side.'_pdf'}??'',true);
+            $hash=$expected[$side.'_hash']??null;
+            if (!is_string($backgroundBytes) || !is_string($hash) || !hash_equals($hash,hash('sha256',$backgroundBytes))) {
+                CertificatePrint::fail('Integritas dekorasi digital '.$side.' gagal.');
+            }
+            $background=$this->page($pdf,$backgroundBytes);
+            $pdf->AddPage('P',[210,297]);
+            $pdf->useTemplate($background,0,0,210,297);
+            $pdf->useTemplate($content,0,0,210,297);
+        }
+        return $pdf->Output('S');
     }
 
     public function preview(string $bytes): string

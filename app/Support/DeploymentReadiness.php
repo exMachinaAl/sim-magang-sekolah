@@ -41,24 +41,39 @@ class DeploymentReadiness
         $add('fixed_hostname', 'advisory', $fixedHost,
             $fixedHost ? 'Hostname tetap tersedia.' : 'Gunakan hostname/domain tetap agar sertifikat dan QR tidak berubah saat IP berganti.');
 
-        $add('secure_cookie', 'required', config('session.secure') === true,
-            config('session.secure') === true ? 'Cookie sesi hanya dikirim melalui HTTPS.' : 'SESSION_SECURE_COOKIE harus true.');
+        $secureCookie = config('session.secure');
+        $add('secure_cookie', 'required', $secureCookie === true || $secureCookie === null,
+            $secureCookie === true ? 'Cookie sesi selalu Secure.' : ($secureCookie === null
+                ? 'Cookie sesi memakai mode auto: Secure pada HTTPS dan tetap berfungsi pada HTTP lokal.'
+                : 'SESSION_SECURE_COOKIE harus true atau auto.'));
         $add('http_only_cookie', 'required', config('session.http_only') === true,
             config('session.http_only') === true ? 'Cookie sesi HttpOnly.' : 'Cookie sesi wajib HttpOnly.');
         $add('same_site_cookie', 'required', in_array(config('session.same_site'), ['lax', 'strict'], true),
             'SameSite cookie harus lax atau strict.');
+        $add('host_only_cookie', 'required', empty(config('session.domain')),
+            empty(config('session.domain')) ? 'Cookie host-only mendukung subdomain dan tunnel yang berubah.' : 'SESSION_DOMAIN harus kosong untuk deployment multi-host.');
+        $add('root_cookie_path', 'required', config('session.path') === '/',
+            config('session.path') === '/' ? 'Cookie tersedia pada root dan /simmag.' : 'Path cookie harus / agar kedua mode gateway berfungsi.');
         $add('persistent_session', 'required', ! in_array(config('session.driver'), [null, 'array'], true),
             'Session staging/produksi tidak boleh memakai driver array.');
         $add('persistent_cache', 'required', ! in_array(config('cache.default'), [null, 'array'], true),
             'Cache staging/produksi tidak boleh memakai driver array.');
 
         $proxies = config('trustedproxy.proxies', []);
-        $validProxies = is_array($proxies) && collect($proxies)->every(fn ($ip) => is_string($ip)
-            && filter_var($ip, FILTER_VALIDATE_IP) !== false);
+        $validProxies = is_array($proxies) && $proxies !== [] && empty(config('trustedproxy.invalid', []));
         $add('trusted_proxies', 'required', $validProxies,
-            $validProxies ? 'Daftar proxy kosong atau hanya berisi IP eksplisit.' : 'TRUSTED_PROXIES mengandung nilai tidak aman.');
+            $validProxies ? 'Daftar Nginx gateway hanya berisi IP/CIDR eksplisit.' : 'TRUSTED_PROXIES harus memuat IP/CIDR Nginx gateway yang valid.');
         $add('proxy_plan', 'advisory', ! empty($proxies),
             ! empty($proxies) ? 'Proxy HTTPS eksplisit dikonfigurasi.' : 'Tanpa proxy tepercaya, TLS harus berakhir langsung pada server aplikasi.');
+        $gatewayHosts = config('gateway.trusted_hosts', []);
+        $gatewayPrefixes = config('gateway.allowed_prefixes', []);
+        $validGatewayHosts = is_array($gatewayHosts) && $gatewayHosts !== [] && empty(config('gateway.invalid_hosts', []));
+        $add('gateway_hosts', 'required', $validGatewayHosts,
+            $validGatewayHosts ? 'Allowlist hostname gateway tersedia dan valid.' : 'GATEWAY_TRUSTED_HOSTS kosong atau mengandung pola tidak valid.');
+        $dualPrefix = is_array($gatewayPrefixes) && in_array('', $gatewayPrefixes, true) && in_array('/simmag', $gatewayPrefixes, true);
+        $dualPrefix = $dualPrefix && empty(config('gateway.invalid_prefixes', []));
+        $add('gateway_dual_prefix', 'required', $dualPrefix,
+            $dualPrefix ? 'Mode root dan /simmag diizinkan.' : 'GATEWAY_ALLOWED_PREFIXES harus memuat / dan /simmag.');
 
         $driver = (string) config('database.default');
         $add('database_driver', 'required', $driver === 'mysql',

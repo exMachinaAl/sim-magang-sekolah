@@ -10,8 +10,12 @@ class ArchiveIntegrity
     public function inspect(Connection $db): array
     {
         $report=['checked_files'=>0,'failures'=>[],'legacy_issued_without_archive'=>0];
+        $documentFields=['pdf_base64'=>'sha256','front_docx'=>'front_hash','back_docx'=>'back_hash'];
+        if ($db->getSchemaBuilder()->hasColumn('certificate_documents','print_pdf_base64')) {
+            $documentFields=['pdf_base64'=>'sha256','print_pdf_base64'=>'print_pdf_sha256','front_docx'=>'front_hash','back_docx'=>'back_hash'];
+        }
         $specs=[
-            'certificate_documents'=>['pdf_base64'=>'sha256','front_docx'=>'front_hash','back_docx'=>'back_hash'],
+            'certificate_documents'=>$documentFields,
             'certificate_print_templates'=>['front_docx'=>'front_hash','back_docx'=>'back_hash','front_pdf'=>'front_pdf_hash','back_pdf'=>'back_pdf_hash'],
             'certificate_word_exports'=>['front_docx'=>'front_hash','back_docx'=>'back_hash'],
             'assessment_evidence'=>['file_base64'=>'sha256'],

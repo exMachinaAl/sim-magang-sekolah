@@ -1,7 +1,7 @@
 <?php
 namespace Tests\Feature;
 
-use App\Models\{AssessmentTemplate, Certificate, CertificatePrintTemplate, Placement, User};
+use App\Models\{AssessmentTemplate, Certificate, CertificatePrintTemplate, CertificatePrintTemplateDefault, Placement, User};
 use App\Support\{CertificateDocx, CertificatePrint, CertificatePdfBackground};
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,7 +89,12 @@ class CertificatePrintTest extends TestCase
     public function test_prepare_and_template_pages_work_and_other_roles_cannot_write(): void
     {
         $t=$this->template();
-        $this->get(route('certificate-print-templates.index',['assessment_template_id'=>$this->assessmentTemplate->id]))->assertOk()->assertSee('LibreOffice belum dikonfigurasi');
+        $templatePage=$this->get(route('certificate-print-templates.index',['assessment_template_id'=>$this->assessmentTemplate->id]))->assertOk();
+        if (config('certificate_print.libreoffice') && is_file(config('certificate_print.libreoffice'))) {
+            $templatePage->assertSee('LibreOffice server aktif');
+        } else {
+            $templatePage->assertSee('LibreOffice server belum dikonfigurasi');
+        }
         $this->get(route('certificates.prepare',[$this->placement,'print_template_id'=>$t->id]))->assertOk()->assertSee('Tempat lahir');
         foreach (array_merge(array_keys(config('certificate_print.front_variants')),array_keys(config('certificate_print.back_variants'))) as $variant) {
             $this->get(route('certificate-print-templates.sample',$variant))->assertOk();
@@ -224,6 +229,8 @@ class CertificatePrintTest extends TestCase
         $counts=[Certificate::count(),\App\Models\CertificateDocument::count(),\App\Models\AuditLog::count()];
         $data=$this->submission($t);
         $preview=$this->post(route('certificates.preview',$this->placement),$data)->assertOk()->assertHeader('Content-Type','application/pdf');
+        $printPreview=$this->post(route('certificates.preview',[$this->placement,'output'=>'print']),$data)->assertOk()->getContent();
+        $this->assertNotSame($preview->getContent(),$printPreview);
         $this->assertSame($counts,[Certificate::count(),\App\Models\CertificateDocument::count(),\App\Models\AuditLog::count()]);
         $reader=new \setasign\Fpdi\Fpdi;
         $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($preview->getContent())));
@@ -236,9 +243,15 @@ class CertificatePrintTest extends TestCase
         $this->assertStringContainsString('00076543',$doc->rendered_html);
         $this->assertStringContainsString('page-break-inside:avoid',$doc->rendered_html);
         $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString(base64_decode($doc->pdf_base64))));
+        $this->assertSame(2,$reader->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString(base64_decode($doc->print_pdf_base64))));
+        $this->assertSame($doc->print_pdf_sha256,hash('sha256',base64_decode($doc->print_pdf_base64)));
+        $this->assertNotSame($doc->sha256,$doc->print_pdf_sha256);
         $this->assertNotSame($preview->getContent(),base64_decode($doc->pdf_base64));
+        $this->get(route('certificates.print-pdf',$c))->assertForbidden();
         $this->put(route('certificates.approve',$c),['version'=>1,'decision'=>'approved'])->assertSessionHasNoErrors();
         $original=$this->get(route('certificates.pdf',$c))->assertOk()->getContent();
+        $originalPrint=$this->get(route('certificates.print-pdf',$c))->assertOk()->getContent();
+        $this->assertNotSame($original,$originalPrint);
         $this->post(route('certificates.prepare-word',$c),['version'=>1])->assertSessionHasNoErrors();
         $this->get(route('certificates.docx',[$c,'front']))->assertOk();
         // The revision form sends _method=POST for preview even though normal submission is PUT.
@@ -247,6 +260,51 @@ class CertificatePrintTest extends TestCase
         $other=$this->template();
         $this->put(route('certificates.resubmit',$c),$this->submission($other)+['version'=>1,'note'=>'Kembali ke PDF bawaan untuk uji versi.'])->assertSessionHasNoErrors();
         $this->assertSame($original,$this->get(route('certificates.pdf',[$c,'version'=>1]))->assertOk()->getContent());
+        $this->assertSame($originalPrint,$this->get(route('certificates.print-pdf',[$c,'version'=>1]))->assertOk()->getContent());
+    }
+
+    public function test_docx_text_with_pdf_decoration_produces_print_and_digital_archives_from_same_snapshot(): void
+    {
+        $this->post(route('certificate-print-templates.store'),$this->pdfData([
+            'renderer'=>'docx_background',
+            'front_docx'=>$this->upload('sertifikat_kepala_sekolah.docx'),
+            'back_docx'=>$this->upload('daftar_nilai_pembimbing_industri.docx'),
+        ]))->assertSessionHasNoErrors();
+        $template=CertificatePrintTemplate::latest('id')->firstOrFail();
+        $this->assertSame('docx_background',$template->renderer());
+        $this->assertTrue($template->hasDualOutput());
+
+        $this->app->instance(CertificateDocx::class,new class extends CertificateDocx {
+            public function convert(array $files,string $dir): string {
+                $pdfs=[];
+                foreach ($files as $index=>$file) {
+                    $processor=new \PhpOffice\PhpWord\TemplateProcessor($file);
+                    if ($processor->getVariables()) throw new \RuntimeException('Unfilled DOCX');
+                    $target=$dir.'/text-'.$index.'.pdf';
+                    file_put_contents($target,Pdf::loadHTML('<p>DOCX text layer '.$index.'</p>')->setPaper('a4')->output());
+                    $pdfs[]=$target;
+                }
+                return $this->merge($pdfs);
+            }
+        });
+
+        $data=$this->submission($template);
+        $digitalPreview=$this->post(route('certificates.preview',[$this->placement,'output'=>'digital']),$data)->assertOk()->getContent();
+        $printPreview=$this->post(route('certificates.preview',[$this->placement,'output'=>'print']),$data)->assertOk()->getContent();
+        $this->assertNotSame($digitalPreview,$printPreview);
+        $this->post(route('certificates.create'),$data)->assertSessionHasNoErrors();
+        $certificate=$this->placement->certificate()->firstOrFail();
+        $document=$certificate->documents()->firstOrFail();
+        $this->assertArrayHasKey('docx_background',$document->snapshot['print']);
+        $this->assertNotNull($document->front_hash);
+        $this->assertNotNull($document->print_pdf_sha256);
+        $this->assertNotSame($document->sha256,$document->print_pdf_sha256);
+        $this->put(route('certificates.approve',$certificate),['version'=>1,'decision'=>'approved'])->assertSessionHasNoErrors();
+        $digital=$this->get(route('certificates.pdf',$certificate))->assertOk()->getContent();
+        $print=$this->get(route('certificates.print-pdf',$certificate))->assertOk()->getContent();
+        $this->assertSame($document->fresh()->sha256,hash('sha256',$digital));
+        $this->assertSame($document->fresh()->print_pdf_sha256,hash('sha256',$print));
+        $this->assertEmpty(app(\App\Support\ArchiveIntegrity::class)->inspect(\Illuminate\Support\Facades\DB::connection())['failures']);
     }
 
     public function test_pdf_background_rejects_invalid_files_layout_and_excess_pages(): void
@@ -288,12 +346,12 @@ class CertificatePrintTest extends TestCase
         $this->assertDatabaseMissing('certificates',['placement_id'=>$this->placement->id]);
     }
 
-    public function test_pdf_preview_checks_roles_and_required_source_and_accepts_free_form_fields(): void
+    public function test_pdf_preview_accepts_compatible_cross_template_design_and_checks_roles_and_source(): void
     {
         $p=Placement::whereHas('assessment',fn($q)=>$q->where('status','approved')->where('assessment_template_id','!=',$this->assessmentTemplate->id))->firstOrFail();
         $this->post(route('certificate-print-templates.store'),$this->pdfData(['assessment_template_id'=>$p->assessment->assessment_template_id,'grade_format'=>'custom']))->assertSessionHasNoErrors();
         $t=CertificatePrintTemplate::latest('id')->firstOrFail();
-        $this->post(route('certificates.preview',$this->placement),$this->submission($t))->assertSessionHasErrors('certificate');
+        $this->post(route('certificates.preview',$this->placement),$this->submission($t))->assertOk();
         $this->placement=$p;
         $this->post(route('certificates.preview',$p),$this->submission($t))->assertOk();
         $p->assessment->update(['status'=>'draft']);
@@ -303,6 +361,53 @@ class CertificatePrintTest extends TestCase
             $this->post(route('certificates.preview',$p),$this->submission($t))->assertForbidden();
             $this->get(route('certificate-print-templates.pdf-sample','front'))->assertForbidden();
         }
+    }
+
+    public function test_design_default_can_change_while_one_student_overrides_without_changing_scores(): void
+    {
+        $first=$this->template(['name'=>'Desain pertama']);
+        $second=$this->template(['name'=>'Desain kedua']);
+        $major=$this->placement->roster->major;
+
+        $this->assertSame($first->id,CertificatePrintTemplateDefault::where('major',$major)->value('certificate_print_template_id'));
+        $this->get(route('certificate-print-templates.index',['assessment_template_id'=>$this->assessmentTemplate->id]))
+            ->assertOk()->assertSee('Default '.$major)->assertSee('Jadikan default');
+        $this->put(route('certificate-print-templates.default',$second),['major'=>$major])->assertSessionHasNoErrors();
+        $this->assertSame($second->id,CertificatePrintTemplateDefault::where('major',$major)->value('certificate_print_template_id'));
+        $this->assertDatabaseHas('audit_logs',['action'=>'certificate_print_template.default_changed',
+            'subject_type'=>class_basename(CertificatePrintTemplate::class),'subject_id'=>$second->id]);
+
+        $this->get(route('certificates.prepare',$this->placement))->assertOk()
+            ->assertSee('Desain kedua')->assertSee('Default jurusan')->assertSee('dipilih otomatis');
+        $before=$this->placement->assessment->only(['assessment_template_id','template_snapshot','field_values','final_score']);
+        $this->post(route('certificates.create'),$this->submission($first))->assertSessionHasNoErrors();
+        $certificate=$this->placement->certificate()->firstOrFail();
+        $this->assertSame($first->id,$certificate->print_template_id);
+        $this->assertSame($second->id,CertificatePrintTemplateDefault::where('major',$major)->value('certificate_print_template_id'));
+        $this->assertSame($before,$this->placement->assessment->fresh()->only(array_keys($before)));
+        $this->assertSame($first->id,$certificate->documents()->firstOrFail()->snapshot['print']['template_id']);
+        $audit=\App\Models\AuditLog::where('action','certificate.created')->where('subject_id',$certificate->id)->latest('id')->firstOrFail();
+        $this->assertTrue($audit->context['design_override']);
+        $this->assertSame($first->id,$audit->context['print_template_id']);
+        $this->assertSame(auth()->id(),$audit->user_id);
+    }
+
+    public function test_incompatible_design_is_hidden_and_explicit_selection_is_rejected_without_mutation(): void
+    {
+        $template=$this->template();
+        $assessment=$this->placement->assessment;
+        $snapshot=$assessment->template_snapshot;
+        $snapshot['fields'][0]['key']='field_other';
+        $values=$assessment->field_values;
+        $values['field_other']=$values['field_1'];
+        unset($values['field_1']);
+        $assessment->update(['template_snapshot'=>$snapshot,'field_values'=>$values]);
+
+        $this->get(route('certificates.prepare',[$this->placement,'print_template_id'=>$template->id]))->assertStatus(422);
+        $this->get(route('certificates.prepare',$this->placement))->assertOk()->assertSee('tidak kompatibel');
+        $this->post(route('certificates.create'),$this->submission($template))->assertSessionHasErrors('certificate');
+        $this->assertDatabaseMissing('certificates',['placement_id'=>$this->placement->id]);
+        $this->assertSame('85.00',$assessment->fresh()->final_score);
     }
 
     public function test_decorated_demo_only_adds_one_template_without_reissuing_existing_document(): void

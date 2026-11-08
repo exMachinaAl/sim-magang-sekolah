@@ -18,7 +18,7 @@ class CertificatePdfTemplateDemoSeeder extends Seeder
         $original=$certificate->printTemplate;
         if (!$original) throw new \RuntimeException('Template contoh sertifikat belum tersedia.');
         if (CertificatePrintTemplate::where('name',self::NAME)->where('assessment_template_id',$original->assessment_template_id)->exists()) return;
-        $values=$original->only(['assessment_template_id','front_variant','back_variant','settings','score_mapping','created_by']);
+        $values=$original->only(['assessment_template_id','design_major','front_variant','back_variant','settings','score_mapping','created_by']);
         $values['name']=self::NAME;
         $values['pdf_layout']=CertificatePdfBackground::defaultLayout();
         foreach (['front','back'] as $side) {

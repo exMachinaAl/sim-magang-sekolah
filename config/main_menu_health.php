@@ -3,7 +3,7 @@
 // Status hasil audit kode, bukan health check otomatis. Hapus tag hanya setelah
 // kriteria penerimaan di docs/AUDIT_MENU_UTAMA.md diuji kembali.
 return [
-    'reviewed_at' => '2026-11-04',
+    'reviewed_at' => '2026-11-08',
     'modules' => [
         'dashboard' => [
             'name' => 'Dashboard', 'routes' => ['dashboard'],
@@ -48,10 +48,10 @@ return [
         'certificates' => [
             'name' => 'Sertifikat', 'routes' => ['certificates.*','certificate-print-templates.*'],
             'status' => 'stable', 'priority' => 'P1', 'order' => 1,
-            'summary' => 'Temuan audit Sertifikat ditutup: identitas PDF terpusat, arsip per versi immutable, dan integritas dokumen diperiksa sebelum distribusi.',
-            'working' => 'PDF bawaan dan PDF berdekorasi tersedia tanpa LibreOffice, dengan area isi per sisi dalam mm dan pratinjau tanpa penerbitan. DOCX/LibreOffice tetap ekstensi opsional. Nilai, penandatangan, dan arsip per versi tetap terjaga.',
+            'summary' => 'Temuan audit Sertifikat ditutup: arsip per versi immutable, integritas dokumen diperiksa, serta keluaran digital berdekorasi dan cetak tanpa dekorasi berasal dari snapshot yang sama.',
+            'working' => 'Desain PDF aplikasi langsung menghasilkan versi digital berdekorasi dan versi teks untuk kertas sertifikat bercetak. Mode DOCX teks + PDF dekorasi memakai posisi/font dari DOCX dan memerlukan LibreOffice di server. Nilai, penandatangan, dan kedua keluaran diarsipkan per versi.',
             'issues' => [],
-            'next' => 'Gunakan revisi resmi bila dokumen lama perlu layout baru; arsip terbit tidak ditimpa. Koreksi cetak printer sekolah tetap dicatat sebagai UAT. Pemulihan server dan kapasitas berada pada checklist deployment. DOCX/LibreOffice tetap ekstensi opsional.',
+            'next' => 'Uji presisi DOCX resmi dengan font sekolah, LibreOffice server, dan printer pada skala 100%. Gunakan revisi resmi untuk layout baru karena arsip terbit tidak ditimpa. Pemulihan server tujuan tetap berada pada checklist deployment.',
         ],
     ],
 ];

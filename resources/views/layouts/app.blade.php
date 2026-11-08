@@ -52,5 +52,6 @@
 @include('partials.context-help',['contextHelp'=>$contextHelp])
 <script>document.addEventListener('click',function(e){const el=e.target.closest('[data-confirm]');if(el&&!window.confirm(el.dataset.confirm)){e.preventDefault();}});</script>
 <script src="{{ asset('js/context-help.js') }}" defer></script>
+<script src="{{ asset('js/inline-help.js') }}" defer></script>
 @stack('scripts')
 </body></html>

@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{Certificate,CertificateMovement,InternshipRoster,Placement};
-use App\Support\{Access,Audit,CertificateArchive};
+use App\Models\{Certificate,CertificateMovement,CertificatePrintTemplate,CertificatePrintTemplateDefault,InternshipRoster,Placement};
+use App\Support\{Access,Audit,CertificateArchive,CertificatePrint};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -44,7 +44,10 @@ class CertificateController {
    $c->update(['number'=>$chosenNumber]);
    app(CertificateArchive::class)->capture($c,$r->user()->id);
    $c->approvals()->create(['party'=>'coordinator','status'=>'pending']);
-   Audit::record('certificate.created',$c);
+   $defaultPrintId=CertificatePrintTemplateDefault::where('major',$p->roster?->major)->value('certificate_print_template_id');
+   Audit::record('certificate.created',$c,['print_template_id'=>$c->print_template_id,
+    'student_major'=>$p->roster?->major,'default_print_template_id'=>$defaultPrintId,
+    'design_override'=>$c->print_template_id && (int)$c->print_template_id!==(int)$defaultPrintId]);
   },3);
   } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
    // A different placement can claim the number after request validation. The
@@ -58,7 +61,7 @@ class CertificateController {
  }
  public function show(Request $r,Certificate $certificate){
   $certificate=Access::certificates($r->user())->with(['placement.student.user','placement.company','placement.period','approvals','approvalEvents.approver','movements.actor',
-   'documents'=>fn($q)=>$q->select('id','certificate_id','version','snapshot','source','note','sha256','issued_at','created_at','front_hash','back_hash')
+   'documents'=>fn($q)=>$q->select('id','certificate_id','version','snapshot','source','note','sha256','print_pdf_sha256','issued_at','created_at','front_hash','back_hash')
     ->with('wordExport:id,certificate_document_id,front_hash,back_hash,layout,created_at')])->findOrFail($certificate->id);
   $document=$certificate->documents->firstWhere('version',$certificate->version);
   return view('certificates.show',compact('certificate','document'));
@@ -112,7 +115,10 @@ class CertificateController {
    if($printTemplate)$c->update(['print_template_id'=>$printTemplate->id,'print_options'=>$printOptions]);
    app(CertificateArchive::class)->capture($c,$r->user()->id,'revision',$d['note']);
    $c->approvals()->update(['status'=>'pending','approver_id'=>null,'note'=>null,'decided_at'=>null]);
-   Audit::record('certificate.resubmitted',$c,['version'=>$c->version,'note'=>$d['note']]);
+   $defaultPrintId=CertificatePrintTemplateDefault::where('major',$c->placement->roster?->major)->value('certificate_print_template_id');
+   Audit::record('certificate.resubmitted',$c,['version'=>$c->version,'note'=>$d['note'],'print_template_id'=>$c->print_template_id,
+    'student_major'=>$c->placement->roster?->major,'default_print_template_id'=>$defaultPrintId,
+    'design_override'=>$c->print_template_id && (int)$c->print_template_id!==(int)$defaultPrintId]);
   },3);return back()->with('success','Versi baru diajukan. Arsip versi lama tetap utuh; distribusi versi baru dimulai setelah disahkan.');
  }
  public function movement(Request $r,Certificate $certificate){
@@ -156,6 +162,19 @@ class CertificateController {
   ]);
  }
 
+ public function printPdf(Request $r,Certificate $certificate){
+  $c=Access::certificates($r->user())->findOrFail($certificate->id);
+  $d=$r->validate(['version'=>'nullable|integer|min:1']);
+  $version=(int)($d['version']??$c->version);
+  $document=$c->documents()->where('version',$version)->first();
+  abort_unless($document,409,'Versi ini belum memiliki arsip PDF.');
+  abort_unless($document->issued_at,403,'Versi dokumen belum disahkan.');
+  return response(app(CertificateArchive::class)->printBytes($document),200,[
+   'Content-Type'=>'application/pdf','Content-Disposition'=>'attachment; filename="sertifikat-'.$c->id.'-v'.$version.'-cetak-tanpa-dekorasi.pdf"',
+   'Cache-Control'=>'no-store, private','X-Content-Type-Options'=>'nosniff',
+  ]);
+ }
+
  public function archiveLegacy(Request $r,Certificate $certificate){
   abort_unless($r->user()->isRole('koordinator'),403);
   $certificate=Access::certificates($r->user())->findOrFail($certificate->id);
@@ -189,11 +208,25 @@ class CertificateController {
  public function prepare(Request $r,Placement $placement){
   $placement=Access::placement($r->user(),$placement->id);
   $placement->load(['student.user','roster','period','company','assessment','certificate']);
-  $templates=\App\Models\CertificatePrintTemplate::select('id','name','front_variant','back_variant','front_hash','front_pdf_hash')->where('assessment_template_id',$placement->assessment?->assessment_template_id)->latest()->get();
-  $r->validate(['print_template_id'=>'nullable|integer|min:1']);
-  $selected=$r->integer('print_template_id')?$templates->firstWhere('id',$r->integer('print_template_id')):null;
-  if($r->integer('print_template_id'))abort_unless($selected,422,'Template cetak tidak sesuai penilaian siswa.');
-  return view('certificates.prepare',compact('placement','templates','selected'));
+  $r->validate(['print_template_id'=>'nullable|integer|exists:certificate_print_templates,id']);
+  $service=app(CertificatePrint::class);
+  $all=CertificatePrintTemplate::select('id','name','assessment_template_id','design_major','front_variant','back_variant',
+      'front_hash','front_pdf_hash','score_mapping','created_at')->with('assessmentTemplate:id,name,major,fields')->latest('id')->get();
+  $issues=$all->mapWithKeys(fn($template)=>[$template->id=>$service->compatibilityIssue($template,$placement->assessment)])->filter();
+  $templates=$all->reject(fn($template)=>$issues->has($template->id))->values();
+  $defaultTemplateId=$placement->roster?CertificatePrintTemplateDefault::where('major',$placement->roster->major)->value('certificate_print_template_id'):null;
+  $selected=null;
+  if($r->integer('print_template_id')) {
+   $selected=$templates->firstWhere('id',$r->integer('print_template_id'));
+   abort_unless($selected,422,$issues->get($r->integer('print_template_id'),'Desain cetak tidak kompatibel dengan ketentuan nilai siswa.').' Nilai siswa tidak diubah.');
+  } else {
+   foreach (array_filter([$placement->certificate?->print_template_id,$defaultTemplateId]) as $preferredId) {
+    if($selected=$templates->firstWhere('id',$preferredId)) break;
+   }
+   $selected??=$templates->first();
+  }
+  $defaultIssue=$defaultTemplateId?$issues->get($defaultTemplateId):null;
+  return view('certificates.prepare',compact('placement','templates','selected','defaultTemplateId','defaultIssue','issues'));
  }
 
  public function docx(Request $r,Certificate $certificate,string $side){

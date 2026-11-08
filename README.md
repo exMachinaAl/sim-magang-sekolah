@@ -4,7 +4,7 @@
 
 Aplikasi ini mengikuti dokumen **PRD WEBSITE SIMMAG** yang dilampirkan. Stack awal React/Vite/Express/PostgreSQL dalam PRD diganti dengan Laravel/Blade/MySQL agar dapat dijalankan melalui Laragon. Tidak membutuhkan Node.js, npm, atau Vite untuk menjalankan tampilan dalam versi ini.
 
-> **Status**: kode sumber MVP untuk uji coba lokal. Dependensi Composer (`vendor/`) tidak dibundel. Jalankan instalasi dan pengujian di komputer Windows/Laragon sebelum dipakai dengan data sekolah sungguhan. Belum diaudit untuk deployment produksi.
+> **Status**: kode sumber MVP yang sudah melewati audit kompatibilitas aplikasi untuk Nginx Gateway/AppCtl. Dependensi Composer (`vendor/`) tidak dibundel. Produksi tetap menunggu pemasangan dan UAT pada infrastruktur Debian, backup/pemulihan, serta penerimaan sekolah sebelum dipakai dengan data sungguhan.
 
 ## Mulai cepat di Windows + Laragon
 
@@ -113,7 +113,7 @@ tests/Feature/            # Pengujian izin akses dan alur sertifikat
 - Dokumen **PDF sertifikat bukan tanda tangan elektronik tersertifikasi**. Template sementara menyediakan posisi tanda tangan/stempel; template resmi dan metode TTE akan diterapkan setelah ditetapkan sekolah.
 - Jurnal mensyaratkan minimal 1 foto untuk dikirim pada versi MVP; pengecualian foto per jenis kegiatan belum tersedia.
 - Edit bobot penilaian hanya dapat dilakukan sebelum ada penilaian, agar hasil nilai lama tidak berubah makna.
-- QR verifikasi sertifikat, template kustom, notifikasi email otomatis, SSO, cloud object storage/Google Drive, sistem kehadiran terpisah, tanda terima foto, dan backup terjadwal belum diimplementasikan.
+- QR verifikasi sertifikat, notifikasi email otomatis, SSO, cloud object storage/Google Drive, sistem kehadiran terpisah, tanda terima foto, dan backup terjadwal belum diimplementasikan. Template sertifikat kustom sudah tersedia dalam mode PDF aplikasi, PDF dekorasi, DOCX, serta DOCX teks + PDF dekorasi; mode DOCX memerlukan LibreOffice di server.
 - PDF jurnal dibatasi maksimal 300 baris per ekspor untuk menjaga memori; gunakan filter tanggal/status untuk dataset lebih besar.
 
 ## Rancangan data dan penelusuran
@@ -124,9 +124,9 @@ Untuk mengembangkan aplikasi ke tahap produksi, validasi dahulu bersama sekolah:
 
 ## Pengujian
 
-Setiap perbaikan/pembaruan harus ditutup dengan dokumentasi hasil tes, checklist yang perlu dicoba pengguna, status flag, serta roadmap tahap berikutnya. Gunakan [pola penyerahan upgrade](docs/POLA_PENYERAHAN_UPGRADE.md); hasil lokal terbaru ada di [upgrade sertifikat template tahap 1, 6 November 2026](docs/UPGRADE_SERTIFIKAT_TEMPLATE_TAHAP1_20261106.md).
+Setiap perbaikan/pembaruan harus ditutup dengan dokumentasi hasil tes, checklist yang perlu dicoba pengguna, status flag, serta roadmap tahap berikutnya. Gunakan [pola penyerahan upgrade](docs/POLA_PENYERAHAN_UPGRADE.md); hasil lokal terbaru ada di [upgrade bantuan sertifikat dan aktivasi LibreOffice, 8 November 2026](docs/UPGRADE_BANTUAN_SERTIFIKAT_LIBREOFFICE_20261108.md).
 
-Sebelum memasang pada staging/produksi, ikuti [panduan deployment staging](docs/DEPLOYMENT_STAGING.md) dan jalankan `php artisan simmag:check-deployment --target=staging`. Perintah tersebut read-only dan tidak menampilkan kredensial. Uji volume data lokal dapat diulang dengan `php scripts/capacity-probe.php`; script hanya menerima MySQL lokal, memakai database sementara, dan langkah aman serta hasil acuannya ada di [dokumentasi upgrade kapasitas](docs/UPGRADE_KAPASITAS_20261105.md).
+Sebelum memasang pada staging/produksi, ikuti [panduan deployment staging](docs/DEPLOYMENT_STAGING.md) dan [panduan Nginx Gateway + AppCtl Debian 13](docs/DEPLOYMENT_GATEWAY_APPCTL_DEBIAN13.md), lalu jalankan `php artisan simmag:check-deployment --target=staging`. Perintah tersebut read-only dan tidak menampilkan kredensial. Uji volume data lokal dapat diulang dengan `php scripts/capacity-probe.php`; script hanya menerima MySQL lokal, memakai database sementara, dan langkah aman serta hasil acuannya ada di [dokumentasi upgrade kapasitas](docs/UPGRADE_KAPASITAS_20261105.md).
 
 Jalankan `php artisan test` setelah Composer selesai diinstal dan ekstensi SQLite diaktifkan pada PHP yang dipakai Composer/Artisan. Berkas pengujian menggunakan SQLite in-memory (terpisah dari MySQL demo), menguji otorisasi antarguru, akses foto, siswa lintas penempatan, penonaktifan akun, validasi nilai, pembatasan admin, dan persetujuan sertifikat oleh koordinator.
 

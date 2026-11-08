@@ -37,8 +37,8 @@ Pemeriksaan lain lulus pada komputer lokal: APP_DEBUG mati, APP_KEY valid, URL H
 
 ## Pengujian pengembang
 
-- Tes pemeriksaan deployment dan proxy HTTPS: **6 tes lulus / 27 assertion**.
-- Regresi aplikasi lengkap setelah upgrade FAQ/petunjuk kontekstual: **172 tes lulus / 3.016 assertion**, 123,09 detik.
+- Tes gateway, pemeriksaan deployment, dan proxy HTTPS terbaru tercakup pada regresi penuh serta [panduan gateway](DEPLOYMENT_GATEWAY_APPCTL_DEBIAN13.md).
+- Regresi aplikasi lengkap setelah gateway, FAQ, dan sertifikat: **187 tes lulus / 3.172 assertion**, 98,05 detik.
 - Probe kapasitas lokal satu angkatan lulus tiga kali: 320 siswa, 256 penempatan, 5.120 jurnal, 128 penilaian dan 128 sertifikat. Waktu probe terlama 540,40 ms; database sementara dihapus dan database kerja terbukti tidak berubah. [Bukti dan cara mengulang](UPGRADE_KAPASITAS_20261105.md).
 - Alur browser Sertifikat dan pemeriksaan geometri dua halaman A4 lulus untuk pratinjau serta dokumen terbit; seluruh pusat identitas berada tepat pada 297,64 pt. [Bukti dan cara koreksi](UPGRADE_SERTIFIKAT_LAYOUT_20261105.md).
 - FAQ berbasis role dan tombol bantuan setiap halaman lulus tes browser untuk hover tertunda, klik, keyboard, pencarian, serta viewport ponsel. [Bukti dan cara uji](UPGRADE_FAQ_PANDUAN_20261106.md).
@@ -54,7 +54,7 @@ Salin [template staging](../.env.staging.example) menjadi `.env` **di server sta
 
 Untuk instalasi baru, buat APP_KEY sekali melalui `php artisan key:generate`. Setelah sistem menyimpan data, jangan mengganti key tanpa prosedur rotasi karena cookie dan data terenkripsi lama dapat menjadi tidak terbaca. Staging dan produksi sebaiknya memakai key berbeda.
 
-`TRUSTED_PROXIES` boleh kosong bila PHP menerima HTTPS langsung. Bila memakai Nginx/Apache/load balancer sebagai reverse proxy, isi hanya IP proxy sebenarnya, misalnya `127.0.0.1,::1` bila proxy berada pada server yang sama. Wildcard tidak diterima.
+`TRUSTED_PROXIES` boleh kosong bila PHP menerima HTTPS langsung. Bila memakai Nginx/Apache/load balancer sebagai reverse proxy, isi hanya IP/CIDR proxy sebenarnya, misalnya `127.0.0.1,::1` bila proxy berada pada server yang sama. Wildcard tidak diterima. Untuk mode subdomain sekaligus `/simmag`, ikuti [panduan Nginx Gateway + AppCtl Debian 13](DEPLOYMENT_GATEWAY_APPCTL_DEBIAN13.md).
 
 ## Urutan pemasangan staging
 

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 class CertificateDocument extends Model
 {
     protected $guarded=['id'];
-    protected $hidden=['pdf_base64','rendered_html','front_docx','back_docx'];
+    protected $hidden=['pdf_base64','print_pdf_base64','rendered_html','front_docx','back_docx'];
     protected function casts(): array { return ['snapshot'=>'array','version'=>'integer','issued_at'=>'datetime']; }
     public function certificate() { return $this->belongsTo(Certificate::class); }
     public function wordExport() { return $this->hasOne(CertificateWordExport::class); }

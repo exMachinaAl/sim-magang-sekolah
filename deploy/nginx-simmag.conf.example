@@ -1,0 +1,84 @@
+# Template untuk Nginx Master Gateway. Ini dokumentasi/referensi; jangan salin
+# otomatis ke Laptop B. Ganti APPCTL_UPSTREAM_HOSTPORT dengan listener privat
+# yang diberikan AppCtl, misalnya 127.0.0.1:18081.
+#
+# Bagian upstream/geo/map berada dalam konteks `http {}`. Location base-path
+# dimasukkan ke server domain utama/tunnel, sedangkan server subdomain dapat
+# dipakai sebagai server block tersendiri.
+
+upstream simmag_appctl {
+    server APPCTL_UPSTREAM_HOSTPORT;
+    keepalive 16;
+}
+
+# Agent tunnel lokal boleh meneruskan skema publik. Tambahkan hanya IP/CIDR
+# privat agent yang benar-benar dikontrol; jangan memakai 0.0.0.0/0.
+geo $simmag_from_tunnel_agent {
+    default 0;
+    127.0.0.1/32 1;
+    ::1/128 1;
+}
+
+map "$simmag_from_tunnel_agent:$http_x_forwarded_proto" $simmag_public_scheme {
+    default $scheme;
+    "1:http" http;
+    "1:https" https;
+}
+
+map $simmag_public_scheme $simmag_public_port {
+    default $server_port;
+    http 80;
+    https 443;
+}
+
+# ---- Tambahkan dua location ini pada server domain utama dan ingress tunnel. ----
+location = /simmag {
+    return 308 /simmag/;
+}
+
+location ^~ /simmag/ {
+    client_max_body_size 32m;
+
+    # Slash terakhir wajib: /simmag/... diubah menjadi /... untuk Laravel.
+    proxy_pass http://simmag_appctl/;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $simmag_public_scheme;
+    proxy_set_header X-Forwarded-Port $simmag_public_port;
+    proxy_set_header X-Forwarded-Prefix /simmag;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header Forwarded "";
+    proxy_redirect off;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+}
+
+# ---- Server subdomain: public base path adalah root. ----
+server {
+    listen 80;
+    server_name simmag.smkn1cerme.test;
+
+    location / {
+        client_max_body_size 32m;
+        proxy_pass http://simmag_appctl;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $simmag_public_scheme;
+        proxy_set_header X-Forwarded-Port $simmag_public_port;
+        proxy_set_header X-Forwarded-Prefix "";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Forwarded "";
+        proxy_redirect off;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+}
+
+# Untuk HTTPS langsung, gunakan server block listen 443 ssl milik gateway;
+# $scheme otomatis menjadi https. Untuk ngrok/cloudflared, arahkan agent ke
+# listener Nginx ini (bukan ke AppCtl) dan pastikan sumber agent cocok dengan
+# geo di atas. Header dari klien internet tidak pernah dipercaya secara global.

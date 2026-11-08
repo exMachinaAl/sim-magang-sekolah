@@ -92,7 +92,15 @@ class CertificateDocx
                 $filled=file_get_contents($output); $result[$side.'_docx']=base64_encode($filled); $result[$side.'_hash']=hash('sha256',$filled);
                 $files[]=$output;
             }
-            if ($convert) $result['pdf']=$this->convert($files,$dir);
+            if ($convert) {
+                $plainPdf=$this->convert($files,$dir);
+                if ($template->renderer()==='docx_background') {
+                    $result['print_pdf']=$plainPdf;
+                    $result['pdf']=app(CertificatePdfBackground::class)->decorateDocument($template,$plainPdf,[
+                        'front_hash'=>$template->front_pdf_hash,'back_hash'=>$template->back_pdf_hash,
+                    ]);
+                } else $result['pdf']=$plainPdf;
+            }
             return $result;
         });
     }

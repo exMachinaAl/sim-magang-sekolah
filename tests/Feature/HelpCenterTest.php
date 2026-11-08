@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\AssessmentTemplate;
+use Database\Seeders\CertificatePreviewDemoSeeder;
 use App\Support\HelpCenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -76,6 +78,48 @@ class HelpCenterTest extends TestCase
         $this->assertStringContainsString("button.addEventListener('click'", $script);
         $this->assertStringContainsString("event.key === 'Escape'", $script);
         $this->assertStringContainsString('!widget.contains(event.target)', $script);
+        $this->assertStringContainsString("matchMedia('(hover: hover) and (pointer: fine)')", $script);
+    }
+
+    public function test_certificate_faq_and_inline_help_explain_the_full_workflow(): void
+    {
+        $coordinator = User::where('role', 'koordinator')->firstOrFail();
+
+        $this->actingAs($coordinator)->get(route('guide', ['q' => 'template sertifikat']))
+            ->assertOk()
+            ->assertSee('Panduan sertifikat')
+            ->assertSee('Bagaimana urutan pengujian template sertifikat yang aman?')
+            ->assertSee('Buka contoh DEMO-SERT-001 dan unduh PDF.')
+            ->assertSee('Bagaimana memakai template DOCX asli sekolah?')
+            ->assertSee('UJI 03 - Template Asli Sekolah')
+            ->assertSee('Actual size / 100%')
+            ->assertSee("const initial=new URLSearchParams(window.location.search).get('q')", false);
+
+        $assessment = AssessmentTemplate::where('major', 'Kuliner')->firstOrFail();
+        $this->get(route('certificate-print-templates.index', ['assessment_template_id' => $assessment->id]))
+            ->assertOk()
+            ->assertSee('data-inline-help', false)
+            ->assertSee('Petunjuk format cetak')
+            ->assertSee('js/inline-help.js', false)
+            ->assertSee('LibreOffice server aktif')
+            ->assertDontSee('LibreOffice server belum dikonfigurasi');
+
+        $this->seed(CertificatePreviewDemoSeeder::class);
+        $placement = \App\Models\InternshipRoster::where('nis', CertificatePreviewDemoSeeder::NIS)->firstOrFail()->placement;
+        $this->get(route('certificates.prepare', $placement))->assertOk()
+            ->assertSee('Petunjuk desain cetak')
+            ->assertSee('Petunjuk tanggal pengesahan');
+    }
+
+    public function test_inline_help_supports_one_second_hover_click_keyboard_and_escape(): void
+    {
+        $script = file_get_contents(public_path('js/inline-help.js'));
+
+        $this->assertStringContainsString('const delay = 1000', $script);
+        $this->assertStringContainsString("button.addEventListener('pointerenter'", $script);
+        $this->assertStringContainsString("button.addEventListener('click'", $script);
+        $this->assertStringContainsString("button.addEventListener('focus'", $script);
+        $this->assertStringContainsString("event.key === 'Escape'", $script);
         $this->assertStringContainsString("matchMedia('(hover: hover) and (pointer: fine)')", $script);
     }
 }

@@ -1,7 +1,7 @@
 <?php
 namespace App\Support;
 
-use App\Models\{Certificate, CertificatePrintTemplate};
+use App\Models\{Assessment, Certificate, CertificatePrintTemplate};
 use Illuminate\Http\Request;
 use Illuminate\Validation\{Rule, ValidationException};
 
@@ -36,12 +36,45 @@ class CertificatePrint
         }
     }
 
+    public function compatibilityIssue(CertificatePrintTemplate $template, ?Assessment $assessment): ?string
+    {
+        $fields = $assessment?->template_snapshot['fields'] ?? null;
+        if (! is_array($fields) || $fields === []) {
+            return 'Penilaian siswa belum memiliki snapshot ketentuan yang dapat dicetak.';
+        }
+
+        if ($template->score_mapping) {
+            try {
+                $this->validateMapping($template->score_mapping, $fields);
+            } catch (ValidationException $exception) {
+                return collect($exception->errors())->flatten()->first()
+                    ?? 'Susunan nilai desain tidak cocok dengan ketentuan siswa.';
+            }
+        } elseif (in_array($template->renderer(), ['docx','docx_background'], true)) {
+            $template->loadMissing('assessmentTemplate:id,fields');
+            $sourceCount = count($template->assessmentTemplate?->fields ?? []);
+            if ($sourceCount !== count($fields)) {
+                return 'DOCX format bebas memerlukan jumlah aspek yang sama dengan sumber desain ('.$sourceCount.' aspek).';
+            }
+        }
+
+        return null;
+    }
+
+    public function assertCompatible(CertificatePrintTemplate $template, ?Assessment $assessment): void
+    {
+        if ($issue = $this->compatibilityIssue($template, $assessment)) {
+            self::fail($issue.' Pilih desain lain; nilai siswa tidak diubah.');
+        }
+    }
+
     /** Supplement an archive source with immutable layout metadata and server-derived values. */
     public function source(Certificate $certificate): array
     {
         $template=CertificatePrintTemplate::findOrFail($certificate->print_template_id);
         $p=$certificate->placement; $a=$p->assessment; $options=$certificate->print_options ?? [];
-        if (!$a->template_snapshot || (int)$template->assessment_template_id!==(int)$a->assessment_template_id) self::fail('Template cetak harus terhubung ke versi template penilaian siswa ini.');
+        if (!$a->template_snapshot) self::fail('Penilaian siswa belum memiliki ketentuan yang dapat dicetak.');
+        $this->assertCompatible($template, $a);
         if (!$p->student->birth_date) self::fail('Lengkapi tanggal lahir pada Data Siswa sebelum membuat sertifikat.');
         foreach (['birth_place','bidang_pekerjaan','tanggal_pengesahan','nisn_nipd'] as $key) if (empty($options[$key])) self::fail('Data cetak belum lengkap: '.$key);
         if ($template->front_variant==='kepala_sekolah_dan_industri' && empty($options['nama_pimpinan_industri'])) self::fail('Nama pimpinan industri wajib untuk sertifikat dua pihak.');
@@ -93,6 +126,9 @@ class CertificatePrint
         if ($template->renderer()==='pdf_background') $result['pdf_background']=[
             'front_hash'=>$template->front_pdf_hash,'back_hash'=>$template->back_pdf_hash,
             'layout'=>app(CertificatePdfBackground::class)->validateLayout($template->pdf_layout??[]),
+        ];
+        if ($template->renderer()==='docx_background') $result['docx_background']=[
+            'front_hash'=>$template->front_pdf_hash,'back_hash'=>$template->back_pdf_hash,
         ];
         return $result;
     }

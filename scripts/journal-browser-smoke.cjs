@@ -286,6 +286,19 @@ async function postButton(page, action) {
   report('Monitoring case assignment, resolution, audit history and mobile detail pass; resolved module flag is absent');
   await coordinator.setViewportSize({ width: 1280, height: 900 });
   await coordinator.goto(`/sertifikat/template?assessment_template_id=${data.print_assessment_template}`);
+  const inlineHelp=coordinator.getByRole('button',{name:'Petunjuk format cetak',exact:true});
+  const inlineTooltip=coordinator.locator('#inline-help-tooltip');
+  await inlineHelp.hover();
+  await coordinator.waitForTimeout(1100);
+  assert.equal(await inlineTooltip.isVisible(),true,'Inline certificate help opens after one-second hover');
+  assert.match(await inlineTooltip.innerText(),/PDF aplikasi \+ dekorasi/);
+  await coordinator.mouse.move(0,0);
+  await coordinator.waitForTimeout(100);
+  assert.equal(await inlineTooltip.isHidden(),true,'Inline help closes after pointer leaves');
+  await inlineHelp.click();
+  assert.equal(await inlineTooltip.isVisible(),true,'Inline help opens on click');
+  await coordinator.keyboard.press('Escape');
+  assert.equal(await inlineTooltip.isHidden(),true,'Escape closes inline help');
   await coordinator.locator('input[name="name"]').fill('Template Cetak Browser');
   await coordinator.locator('select[name="front_variant"]').selectOption('kepala_sekolah_dan_industri');
   await coordinator.locator('select[name="back_variant"]').selectOption('pembimbing_sekolah');
@@ -304,11 +317,11 @@ async function postButton(page, action) {
   await coordinator.setViewportSize({width:1280,height:900});
   await coordinator.getByRole('button', { name: 'Simpan Template Cetak Baru', exact: true }).click();
   await coordinator.waitForLoadState('networkidle');
-  assert.match(await coordinator.getByRole('status').innerText(), /Template cetak tersimpan/);
+  assert.match(await coordinator.getByRole('status').innerText(), /Desain cetak tersimpan/);
   await coordinator.goto(`/sertifikat/siapkan/${data.print_candidate}`);
   const printTemplate = await coordinator.locator('select[name="print_template_id"] option').filter({ hasText: 'Template Cetak Browser' }).getAttribute('value');
   await coordinator.locator('select[name="print_template_id"]').selectOption(printTemplate);
-  await coordinator.getByRole('button', { name: 'Pilih Format', exact: true }).click();
+  await coordinator.getByRole('button', { name: 'Gunakan Desain', exact: true }).click();
   await coordinator.waitForLoadState('networkidle');
   for (const [key,value] of Object.entries({birth_place:'Gresik',bidang_pekerjaan:'Kompetensi uji',nama_pimpinan_industri:'Pimpinan Industri Uji',nama_pembimbing:'Penandatangan Sekolah Uji',nip_pembimbing:'00087654'})) {
     await coordinator.locator(`input[name="print_options[${key}]"]`).fill(value);
@@ -317,20 +330,25 @@ async function postButton(page, action) {
   await coordinator.setViewportSize({width:390,height:844});
   assert.ok(await coordinator.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),'Certificate form must fit mobile');
   await coordinator.screenshot({ path:path.join(directory,'certificate-prepare-mobile.png'), fullPage:true });
-  const previewResponse=contexts[0].waitForEvent('response',{predicate:r=>r.url().includes('/sertifikat/pratinjau/') && r.request().method()==='POST'});
-  await coordinator.getByRole('button',{name:'Pratinjau PDF',exact:true}).click();
-  const preview=await previewResponse;
-  assert.equal(preview.status(),200);
-  assert.match(preview.headers()['content-type'],/application\/pdf/);
-  // Chromium's inline PDF viewer can expose its HTML embed wrapper as response.body().
-  // Fetch the same CSRF-protected POST through the authenticated request context for actual PDF bytes.
-  const previewBytesResponse=await contexts[0].request.post(preview.url(),{
-    data:preview.request().postData(),headers:{'Content-Type':preview.request().headers()['content-type']}
-  });
-  assert.equal(previewBytesResponse.status(),200);
-  const previewBytes=await previewBytesResponse.body();
-  assert.equal(previewBytes.subarray(0,4).toString(),'%PDF');
-  fs.writeFileSync(path.join(directory,'certificate-decorated-preview.pdf'),previewBytes);
+  const previewOutput=async(buttonName,fileName)=>{
+    const responsePromise=contexts[0].waitForEvent('response',{predicate:r=>r.url().includes('/sertifikat/pratinjau/') && r.request().method()==='POST'});
+    await coordinator.getByRole('button',{name:buttonName,exact:true}).click();
+    const response=await responsePromise;
+    assert.equal(response.status(),200);
+    assert.match(response.headers()['content-type'],/application\/pdf/);
+    // Chromium's inline PDF viewer can expose an embed wrapper; repeat the same authenticated POST for exact bytes.
+    const bytesResponse=await contexts[0].request.post(response.url(),{
+      data:response.request().postData(),headers:{'Content-Type':response.request().headers()['content-type']}
+    });
+    assert.equal(bytesResponse.status(),200);
+    const bytes=await bytesResponse.body();
+    assert.equal(bytes.subarray(0,4).toString(),'%PDF');
+    fs.writeFileSync(path.join(directory,fileName),bytes);
+    return bytes;
+  };
+  const digitalPreviewBytes=await previewOutput('Pratinjau Digital Berdekorasi','certificate-decorated-preview.pdf');
+  const printPreviewBytes=await previewOutput('Pratinjau Cetak Tanpa Dekorasi','certificate-print-ready-preview.pdf');
+  assert.ok(!digitalPreviewBytes.equals(printPreviewBytes),'Digital and print-ready previews must differ');
   await coordinator.getByRole('button', { name:'Buat & Ajukan Sertifikat', exact:true }).click();
   await coordinator.waitForLoadState('networkidle');
   assert.match(await coordinator.getByRole('status').innerText(), /Sertifikat dibuat/);
@@ -338,13 +356,18 @@ async function postButton(page, action) {
   await coordinator.getByRole('link',{name:'Detail →',exact:true}).click();
   await coordinator.locator('form[action$="/persetujuan"] button[value="approved"]').click();
   await coordinator.waitForLoadState('networkidle');
-  const newPdf = await coordinator.getByRole('link',{name:'↓ Unduh Sertifikat + Nilai PDF',exact:true}).getAttribute('href');
-  const printDownload = await contexts[0].request.get(newPdf);
-  assert.equal(printDownload.status(),200);
-  assert.equal((await printDownload.body()).subarray(0,4).toString(),'%PDF');
-  fs.writeFileSync(path.join(directory,'certificate-decorated-issued.pdf'),await printDownload.body());
+  const newPdf = await coordinator.getByRole('link',{name:'↓ Unduh PDF Digital Berdekorasi',exact:true}).getAttribute('href');
+  const printReadyUrl = await coordinator.getByRole('link',{name:'↓ Unduh PDF Cetak Tanpa Dekorasi',exact:true}).getAttribute('href');
+  const digitalDownload = await contexts[0].request.get(newPdf);
+  const printReadyDownload = await contexts[0].request.get(printReadyUrl);
+  assert.equal(digitalDownload.status(),200); assert.equal(printReadyDownload.status(),200);
+  assert.equal((await digitalDownload.body()).subarray(0,4).toString(),'%PDF');
+  assert.equal((await printReadyDownload.body()).subarray(0,4).toString(),'%PDF');
+  assert.ok(!(await digitalDownload.body()).equals(await printReadyDownload.body()),'Issued outputs must differ');
+  fs.writeFileSync(path.join(directory,'certificate-decorated-issued.pdf'),await digitalDownload.body());
+  fs.writeFileSync(path.join(directory,'certificate-print-ready-issued.pdf'),await printReadyDownload.body());
   assert.deepEqual(failures,[]);
-  report('New print template, independent signers, full identity form, mobile layout, approval and archived PDF download pass');
+  report('Reusable print design, default selection, independent signers, mobile layout, approval and archived PDF download pass');
   await coordinator.goto('/penilaian?q='+data.print_nis);
   assert.equal(await coordinator.locator('select[name="placement_id"]').count(),0);
   assert.equal(await coordinator.locator('[data-module-health="assessments"]').count(),0);
@@ -363,7 +386,7 @@ async function postButton(page, action) {
   assert.equal((await pupilContext.request.get(evidenceURL)).status(),403);
   assert.equal((await teacherContext.request.get(evidencePage)).status(),403);
   const unchangedPDF=await contexts[0].request.get(newPdf);
-  assert.ok((await printDownload.body()).equals(await unchangedPDF.body()),'Evidence upload must not alter issued PDF');
+  assert.ok((await digitalDownload.body()).equals(await unchangedPDF.body()),'Evidence upload must not alter issued PDF');
   assert.ok(await coordinator.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Evidence screen fits mobile');
   await coordinator.screenshot({path:path.join(directory,'assessment-evidence-mobile.png'),fullPage:true});
   report('Assessment search, private evidence upload/download, role restrictions and unchanged issued PDF pass; flag removed');
@@ -373,7 +396,9 @@ async function postButton(page, action) {
     assert.equal(await coordinator.getByText(/template PDF sudah terisi; tidak perlu LibreOffice/).count(),1);
     await coordinator.screenshot({ path:path.join(directory,'certificate-ready-demo-mobile.png'),fullPage:true });
     await coordinator.getByRole('link',{name:'1. Buka contoh & unduh PDF',exact:true}).click();
-    const demoUrl=await coordinator.getByRole('link',{name:'↓ Unduh Sertifikat + Nilai PDF',exact:true}).getAttribute('href');
+    // Demo awal boleh memakai PDF bawaan atau PDF digital berdekorasi. Keduanya
+    // siap diunduh tanpa LibreOffice; label mengikuti jenis arsip yang tersedia.
+    const demoUrl=await coordinator.getByRole('link',{name:/Unduh PDF (?:Digital Berdekorasi|Sertifikat)/}).getAttribute('href');
     assert.equal((await contexts[0].request.get(demoUrl)).status(),200);
     for (const side of ['depan','belakang']) {
       const wordUrl=await coordinator.getByRole('link',{name:'Unduh DOCX '+side,exact:true}).getAttribute('href');

@@ -12,7 +12,7 @@ class CertificatePreviewController
     {
         $placement=Access::placement($request->user(),$placement->id);
         $data=$request->validate(['print_template_id'=>'required|integer|exists:certificate_print_templates,id',
-            'number'=>'nullable|string|max:100']);
+            'number'=>'nullable|string|max:100','output'=>'nullable|in:digital,print']);
         $template=CertificatePrintTemplate::findOrFail($data['print_template_id']);
         $existing=$placement->certificate;
         // Unsaved model: no sequence reservation, document, approval, audit or version is written.
@@ -21,8 +21,10 @@ class CertificatePreviewController
             'version'=>$existing ? $existing->version+1 : 1,
             'print_options'=>app(CertificatePrint::class)->options($request,$template)]);
         $render=app(CertificateArchive::class)->render($certificate);
-        $bytes=app(CertificatePdfBackground::class)->preview(base64_decode($render['pdf_base64'],true));
+        $profile=$data['output']??'digital';
+        $encoded=$profile==='print' ? ($render['print_pdf_base64']??$render['pdf_base64']) : $render['pdf_base64'];
+        $bytes=app(CertificatePdfBackground::class)->preview(base64_decode($encoded,true));
         return response($bytes,200,['Content-Type'=>'application/pdf',
-            'Content-Disposition'=>'inline; filename="pratinjau-sertifikat.pdf"','Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff']);
+            'Content-Disposition'=>'inline; filename="pratinjau-sertifikat-'.$profile.'.pdf"','Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff']);
     }
 }

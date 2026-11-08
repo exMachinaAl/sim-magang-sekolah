@@ -45,6 +45,13 @@ class DeploymentReadinessTest extends TestCase
             'session.driver' => 'file',
             'cache.default' => 'file',
             'trustedproxy.proxies' => ['127.0.0.1'],
+            'trustedproxy.invalid' => [],
+            'gateway.trusted_hosts' => ['staging.simmag.example'],
+            'gateway.invalid_hosts' => [],
+            'gateway.allowed_prefixes' => ['', '/simmag'],
+            'gateway.invalid_prefixes' => [],
+            'session.domain' => null,
+            'session.path' => '/',
             'database.default' => 'mysql',
             // Exercise the connection check on the isolated test database while
             // retaining the deployment-facing connection name expected by SIMMAG.

@@ -33,7 +33,7 @@ class CertificatePreviewDemoTest extends TestCase
         $this->get(route('certificates.index'))->assertOk()->assertSee('data-certificate-demo',false)
             ->assertSee('tidak perlu LibreOffice')->assertDontSee('data-module-health="certificates"',false)
             ->assertDontSee('Sertifikat: UNSTABLE');
-        $this->get(route('certificates.show',$c))->assertOk()->assertSee('Unduh Sertifikat + Nilai PDF');
+        $this->get(route('certificates.show',$c))->assertOk()->assertSee('Unduh PDF Sertifikat');
         $pdf=$this->get(route('certificates.pdf',$c))->assertOk()->getContent();
         $this->assertStringStartsWith('%PDF',$pdf);
         $this->get(route('certificates.prepare',[$c->placement_id,'print_template_id'=>$c->print_template_id]))->assertOk()->assertSee('Gresik')->assertSee('Ajukan Versi Baru');

@@ -40,11 +40,16 @@ class ArchiveRecoveryTest extends TestCase
     public function test_corrupt_pdf_and_missing_background_pair_are_not_treated_as_valid_backups(): void
     {
         $doc=CertificateDocument::firstOrFail();
-        DB::table('certificate_documents')->where('id',$doc->id)->update(['pdf_base64'=>base64_encode('different bytes')]);
+        DB::table('certificate_documents')->where('id',$doc->id)->update([
+            'pdf_base64'=>base64_encode('different bytes'),
+            'print_pdf_base64'=>base64_encode('print bytes'),
+            'print_pdf_sha256'=>str_repeat('0',64),
+        ]);
         $template=CertificatePrintTemplate::whereNotNull('front_pdf')->firstOrFail();
         DB::table('certificate_print_templates')->where('id',$template->id)->update(['back_pdf'=>null,'back_pdf_hash'=>null]);
         $report=app(ArchiveIntegrity::class)->inspect(DB::connection());
         $this->assertTrue(collect($report['failures'])->contains(fn($f)=>$f['table']==='certificate_documents' && $f['id']===$doc->id && $f['field']==='pdf_base64'));
+        $this->assertTrue(collect($report['failures'])->contains(fn($f)=>$f['table']==='certificate_documents' && $f['id']===$doc->id && $f['field']==='print_pdf_base64'));
         $this->assertTrue(collect($report['failures'])->contains(fn($f)=>$f['reason']==='incomplete_front_back_pair'));
     }
 

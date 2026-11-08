@@ -81,13 +81,13 @@ class CertificateArchive
             'certificate'=>$certificate,'print'=>$snapshot['print']??null,'startsAt'=>$certificate->placement->roster->internship_starts_at,
             'endsAt'=>$certificate->placement->roster->internship_ends_at,
         ])->render();
-        $docx=[];
+        $docx=[]; $printBytes=null;
         if (isset($snapshot['print']['pdf_background'])) {
             $render=app(CertificatePdfBackground::class)->render($certificate,$snapshot['print']);
-            $bytes=$render['pdf']; $html=$render['html'];
+            $bytes=$render['pdf']; $printBytes=$render['print_pdf']; $html=$render['html'];
         } elseif (isset($snapshot['print']) && $snapshot['print']['front_hash']) {
             $render=app(CertificateDocx::class)->render(\App\Models\CertificatePrintTemplate::findOrFail($certificate->print_template_id),$snapshot['print']['values']);
-            $bytes=$render['pdf']; unset($render['pdf']); $docx=$render;
+            $bytes=$render['pdf']; $printBytes=$render['print_pdf']??null; unset($render['pdf'],$render['print_pdf']); $docx=$render;
         } else {
         $pdf=Pdf::loadHTML($html)->setPaper('a4',$templated?'portrait':'landscape');
         $pdf->render();
@@ -96,14 +96,28 @@ class CertificateArchive
         ]);
         $bytes=$pdf->output();
         }
-        return ['snapshot'=>$snapshot,'rendered_html'=>$html,
+        $result=['snapshot'=>$snapshot,'rendered_html'=>$html,
             'pdf_base64'=>base64_encode($bytes),'sha256'=>hash('sha256',$bytes)]+$docx;
+        if (is_string($printBytes) && $printBytes!=='' && !hash_equals(hash('sha256',$bytes),hash('sha256',$printBytes))) {
+            $result['print_pdf_base64']=base64_encode($printBytes);
+            $result['print_pdf_sha256']=hash('sha256',$printBytes);
+        }
+        return $result;
     }
 
     public function bytes(CertificateDocument $document): string
     {
         $bytes=base64_decode($document->pdf_base64,true);
         abort_unless(is_string($bytes) && hash_equals($document->sha256,hash('sha256',$bytes)),409,'Arsip PDF gagal pemeriksaan integritas. Hubungi koordinator; jangan membangun ulang dari data hidup.');
+        return $bytes;
+    }
+
+    public function printBytes(CertificateDocument $document): string
+    {
+        $bytes=base64_decode($document->print_pdf_base64??'',true);
+        abort_unless(is_string($bytes) && $bytes!=='' && $document->print_pdf_sha256
+            && hash_equals($document->print_pdf_sha256,hash('sha256',$bytes)),409,
+            'PDF cetak tanpa dekorasi tidak tersedia atau gagal pemeriksaan integritas. Ajukan versi baru dengan desain dua keluaran.');
         return $bytes;
     }
 }

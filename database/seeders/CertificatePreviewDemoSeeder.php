@@ -1,7 +1,7 @@
 <?php
 namespace Database\Seeders;
 
-use App\Models\{Assessment, AssessmentTemplate, Certificate, CertificatePrintTemplate, Company, Student, User};
+use App\Models\{Assessment, AssessmentTemplate, Certificate, CertificatePrintTemplate, CertificatePrintTemplateDefault, Company, Student, User};
 use App\Support\{CertificateArchive, StudentEnrollment};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -49,11 +49,14 @@ class CertificatePreviewDemoSeeder extends Seeder
                 'field_values'=>['field_1'=>80,'field_2'=>82,'field_3'=>85,'field_4'=>89,'field_5'=>90],
                 'calculated_score'=>85.2,'final_score'=>85,'final_score_reason'=>'DEMO: nilai resmi contoh 85,00; hasil hitung 85,20 tidak menggantinya.',
                 'industry_assessor'=>'Penilai Industri (DEMO)','assessed_on'=>$end,'revision'=>1,'notes'=>self::MARKER]);
-            $print=CertificatePrintTemplate::create(['name'=>'DEMO siap uji — PDF bawaan','assessment_template_id'=>$assessmentTemplate->id,
+            $print=CertificatePrintTemplate::create(['name'=>'DEMO siap uji — PDF bawaan','assessment_template_id'=>$assessmentTemplate->id,'design_major'=>'Kuliner',
                 'front_variant'=>'kepala_sekolah_dan_industri','back_variant'=>'pembimbing_industri','score_mapping'=>$mapping,'created_by'=>$actor->id,
                 'settings'=>['nama_sekolah_judul'=>'SEKOLAH CONTOH (DEMO)','nama_sekolah_ttd'=>'SEKOLAH CONTOH (DEMO)',
                     'nama_kepala_sekolah'=>'Kepala Sekolah (DEMO)','nip_kepala_sekolah'=>'DEMO-NIP-001',
                     'bidang_keahlian'=>'Pariwisata (contoh)','program_keahlian'=>'Kuliner','kota_terbit'=>'Gresik']]);
+            CertificatePrintTemplateDefault::firstOrCreate(['major'=>'Kuliner'],[
+                'certificate_print_template_id'=>$print->id,'updated_by'=>$actor->id,
+            ]);
             $certificate=Certificate::create(['placement_id'=>$placement->id,'number'=>'DEMO/SERTIFIKAT/'.$placement->id,
                 'status'=>'awaiting_print','issued_at'=>now(),'print_template_id'=>$print->id,
                 'print_options'=>['birth_place'=>'Gresik','bidang_pekerjaan'=>'Pengolahan makanan (DEMO)','nisn_nipd'=>'DEMO-NISN-001',

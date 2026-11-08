@@ -5,6 +5,6 @@
   <p>{{ $contextHelp['summary'] }}</p>
   <ol>@foreach($contextHelp['steps'] as $step)<li>{{ $step }}</li>@endforeach</ol>
   <div class="context-help-role"><strong>{{ auth()->user()->roleLabel() }}</strong><span>{{ $contextHelp['role_note'] }}</span></div>
-  <a href="{{ route('guide') }}#faq-search">Buka FAQ & panduan lengkap →</a>
+  <a href="{{ route('guide',['q'=>$contextHelp['faq_query'] ?? $contextHelp['key']]) }}#faq-search">Buka FAQ & panduan lengkap →</a>
  </section>
 </aside>

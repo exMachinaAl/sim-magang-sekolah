@@ -4,6 +4,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureGatewayRequest;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(web: __DIR__.'/../routes/web.php', commands: __DIR__.'/../routes/console.php', health: '/up')
@@ -15,8 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['role' => EnsureRole::class, 'active' => EnsureActiveAccount::class]);
         $middleware->trustProxies(headers:
             \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
             \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
-            \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT);
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
+        // Runs after TrustProxies so forwarded host/prefix are accepted only
+        // from the explicit gateway IPs in TRUSTED_PROXIES.
+        $middleware->append(EnsureGatewayRequest::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $exception, \Illuminate\Http\Request $request) {
