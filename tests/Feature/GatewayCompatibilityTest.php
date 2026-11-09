@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Journal, Placement, User};
+use App\Models\{IndustryMentor, Journal, Placement, User};
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -183,6 +183,55 @@ class GatewayCompatibilityTest extends TestCase
             '#^https://'.preg_quote($host, '#').'/simmag/industry/scan/[A-Za-z0-9]{64}$#',
             $response->viewData('scanUrl'),
         );
+    }
+
+    public function test_kiosk_enrollment_cookie_is_scoped_to_gateway_base_path_and_device_is_usable(): void
+    {
+        $placement = Placement::with('company')->firstOrFail();
+        $coordinator = User::where('role', 'koordinator')->firstOrFail();
+        $mentor = IndustryMentor::create([
+            'name' => 'Dodi Gateway',
+            'company_id' => $placement->company_id,
+            'created_by' => $coordinator->id,
+        ]);
+        $mentor->placements()->attach($placement->id);
+        $host = 'rotating-host.example-tunnel.test';
+        $headers = $this->forwarded($host, '/simmag', 'https');
+
+        $invite = $this->actingAs($coordinator)->server()->post(
+            'http://app.internal/jurnal-pembimbing-industri/'.$mentor->id.'/qr',
+            [],
+            $headers,
+        )->assertOk()->viewData('url');
+        $this->assertMatchesRegularExpression(
+            '#^https://'.preg_quote($host, '#').'/simmag/industry/enroll/[A-Za-z0-9]{64}$#',
+            $invite,
+        );
+
+        auth()->logout();
+        $token = basename((string) parse_url($invite, PHP_URL_PATH));
+        $internalEnroll = 'http://app.internal/industry/enroll/'.$token;
+        $this->server()->get($internalEnroll, $headers)
+            ->assertOk()
+            ->assertSee('action="https://'.$host.'/simmag/industry/enroll/'.$token.'"', false);
+
+        $registered = $this->server()->post($internalEnroll, [], $headers)
+            ->assertRedirect('https://'.$host.'/simmag/industry')
+            ->assertCookie('industry_device');
+        $cookie = collect($registered->headers->getCookies())
+            ->first(fn ($item) => $item->getName() === 'industry_device');
+        $this->assertNotNull($cookie);
+        $this->assertSame('/simmag/industry', $cookie->getPath());
+        $this->assertTrue($cookie->isSecure());
+        $this->assertTrue($cookie->isHttpOnly());
+        $this->assertSame('lax', $cookie->getSameSite());
+
+        $secret = $registered->getCookie('industry_device')->getValue();
+        $this->withCookie('industry_device', $secret)
+            ->server()
+            ->get('http://app.internal/industry', $headers)
+            ->assertOk()
+            ->assertSee('Dodi Gateway');
     }
 
     public function test_csrf_contract_still_accepts_valid_token_and_rejects_invalid_token(): void

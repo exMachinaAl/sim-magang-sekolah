@@ -109,7 +109,13 @@ class IndustryJournalController
             DB::table('industry_device_invites')->where('id',$row->id)->update(['used_at'=>now(),'updated_at'=>now()]);
             $this->kioskAudit('industry_device.enrolled',$device,['industry_mentor_id'=>$mentor->id]);
         });
-        return redirect()->route('industry.home')->withCookie(Cookie::make('industry_device',$secret,180*24*60,'/industry',null,$request->isSecure(),true,false,'lax'));
+        // Keep the kiosk cookie limited to the industry area while honoring a
+        // trusted gateway base-path such as /simmag. A fixed /industry path is
+        // not sent by browsers to /simmag/industry and leaves the newly
+        // registered device unusable after the enrollment redirect.
+        $basePath=rtrim($request->getBaseUrl(),'/');
+        $cookiePath=($basePath===''?'':$basePath).'/industry';
+        return redirect()->route('industry.home')->withCookie(Cookie::make('industry_device',$secret,180*24*60,$cookiePath,null,$request->isSecure(),true,false,'lax'));
     }
 
     public function device(Request $request): IndustryDevice
