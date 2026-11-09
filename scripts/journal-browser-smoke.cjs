@@ -155,9 +155,15 @@ async function postButton(page, action) {
   assert.match(await student.locator('body').innerText(), /Belum divalidasi industri/);
   await dodi.goto(scanURL);
   await dodi.waitForURL('**/industry');
+  await dodi.getByRole('button',{name:'OK, Validasi',exact:true}).click();
+  await dodi.getByText(/Jurnal berhasil divalidasi/).waitFor();
+  await dodi.goto(scanURL);
+  await dodi.waitForURL('**/industry');
+  assert.equal(await dodi.locator('[data-kiosk-confirm]:visible').count(),0,'Repeated identical QR must not open confirmation');
+  assert.match(await dodi.locator('body').innerText(),/sudah tervalidasi/);
   await student.reload();
   assert.match(await student.locator('body').innerText(), /Tervalidasi industri/);
-  report('Student edits exact score; HEAD does not validate; CSRF enforced; Dodi GET auto-POST validates');
+  report('Student edits exact score; CSRF enforced; portal requires OK; repeated QR is idempotent without confirmation');
 
   // Exercise stale QR and the editor reset after a server-side validation failure.
   await student.locator(`[data-edit-journal="${data.journal}"]`).click();

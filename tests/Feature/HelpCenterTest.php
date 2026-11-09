@@ -70,6 +70,21 @@ class HelpCenterTest extends TestCase
         $this->assertSame('umum', $service->page('route.baru.yang.belum.dipetakan', $coordinator)['key']);
     }
 
+    public function test_kiosk_help_explains_portal_confirmation_and_batch_flow(): void
+    {
+        $coordinator = User::where('role', 'koordinator')->firstOrFail();
+        $service = app(HelpCenter::class);
+        $help = $service->page('journals.mentors', $coordinator);
+
+        $this->assertStringContainsString('Portal Kiosk', $help['summary']);
+        $this->assertStringContainsString('OK untuk mengesahkan atau Batal', implode(' ', $help['steps']));
+
+        $this->actingAs($coordinator)->get(route('guide', ['q' => 'perangkat pembimbing industri']))
+            ->assertOk()
+            ->assertSee('Portal Kiosk')
+            ->assertSee('memindai banyak QR siswa secara berurutan');
+    }
+
     public function test_context_help_script_supports_delayed_hover_click_escape_and_outside_close(): void
     {
         $script = file_get_contents(public_path('js/context-help.js'));

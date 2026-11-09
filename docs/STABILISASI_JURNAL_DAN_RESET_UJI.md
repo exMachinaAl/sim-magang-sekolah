@@ -67,7 +67,7 @@ node scripts/journal-browser-smoke.cjs $journalTools
 
 Script membuat direktori `simmag-journal-smoke-*` baru di OS temporary directory, SQLite baru, storage/sesi/view cache terpisah, APP_KEY uji acak, dan server di port loopback acak. Fixture menolak reset jika file database sudah ada dan menolak direktori di luar pola/temp root. Server/browser dihentikan setelah tes; server aplikasi utama tidak dihentikan. Tersimpan `result.json` dan screenshot siswa sebagai bukti pada direktori yang dicetak di terminal. Data semuanya fiktif. Helper fixture hanya untuk CLI/development server pengujian, bukan route aplikasi produksi.
 
-Skenario browser: login NIS dan koordinator; QR aktual dapat didekode; enrollment otomatis; HttpOnly cookie; POST tanpa CSRF ditolak; HEAD tidak memvalidasi; nilai desimal; validasi otomatis; edit membatalkan QR lama; perbaikan/reset form setelah validasi gagal; ekspor tanggal akhir saja; pencabutan perangkat. Tidak ada error JavaScript tak tertangani pada run yang lulus.
+Skenario browser: login NIS dan koordinator; QR aktual dapat didekode; enrollment otomatis; HttpOnly cookie; POST tanpa CSRF ditolak; HEAD tidak memvalidasi; nilai desimal; Portal Kiosk menunggu tombol OK; scan ulang tidak membuka konfirmasi atau membuat duplikasi; edit membatalkan QR lama; perbaikan/reset form setelah validasi gagal; ekspor tanggal akhir saja; pencabutan perangkat. Tidak ada error JavaScript tak tertangani pada run yang lulus. Alur portal terbaru didokumentasikan di [Upgrade Portal Kiosk Batch](UPGRADE_PORTAL_KIOSK_BATCH_20261109.md).
 
 ## Gerbang sebelum tag STABLE produksi
 

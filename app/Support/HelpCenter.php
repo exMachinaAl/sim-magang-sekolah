@@ -77,8 +77,8 @@ class HelpCenter
             'journals.mentors*' => [
                 'key' => 'kiosk-industri',
                 'title' => 'Pembimbing industri & perangkat kiosk',
-                'summary' => 'Daftarkan pembimbing industri, hubungkan siswa, buat QR pendaftaran sekali pakai, dan cabut perangkat yang tidak lagi dipercaya.',
-                'steps' => ['Buat atau pilih pembimbing industri.', 'Tetapkan siswa yang benar sebelum membuat QR pendaftaran.', 'Minta pembimbing memindai QR dengan perangkatnya sendiri dan cabut perangkat bila hilang atau berganti pengguna.'],
+                'summary' => 'Daftarkan pembimbing industri, hubungkan siswa, buat QR pendaftaran sekali pakai, lalu gunakan Portal Kiosk untuk scan jurnal secara berurutan.',
+                'steps' => ['Buat atau pilih pembimbing industri.', 'Tetapkan siswa yang benar sebelum membuat QR pendaftaran.', 'Minta pembimbing memindai QR pendaftaran dengan HP dan browsernya sendiri; perangkat akan diarahkan ke Portal Kiosk.', 'Pada portal, periksa setiap jurnal lalu pilih OK untuk mengesahkan atau Batal untuk melewati. Cabut perangkat bila hilang atau berganti pengguna.'],
                 'roles' => ['koordinator' => 'QR pendaftaran bukan untuk siswa dan tidak boleh dikirim sebagai tangkapan layar kepada pihak lain.'],
             ],
             'certificate-print-templates.*' => [
@@ -184,7 +184,7 @@ class HelpCenter
                 'key' => 'jurnal',
                 'title' => 'Jurnal & foto',
                 'summary' => 'Jurnal mencatat kegiatan harian, foto opsional, nilai persis dari industri, review sekolah, dan validasi perangkat industri.',
-                'steps' => ['Cari/pilih siswa atau penempatan yang benar.', 'Isi kegiatan pada tanggal di dalam jadwal PKL; foto bersifat opsional.', 'Validasi industri berbeda dari review sekolah dan menyimpan waktu scan aktual.'],
+                'steps' => ['Cari/pilih siswa atau penempatan yang benar.', 'Isi kegiatan pada tanggal di dalam jadwal PKL; foto bersifat opsional.', 'Tampilkan QR setelah isi dan nilai dari industri sudah benar.', 'Pembimbing memindai melalui Portal Kiosk, memeriksa ringkasan, lalu memilih OK. Validasi industri berbeda dari review sekolah dan menyimpan waktu scan aktual.'],
                 'roles' => [
                     'siswa' => 'Simpan kegiatan sendiri, tunjukkan ringkasan kepada pembimbing industri, lalu tampilkan QR setelah isi dan nilai disepakati.',
                     'guru' => 'Review hanya siswa yang ditugaskan dan digunakan ketika pendampingan kasus diperlukan.',
@@ -241,7 +241,7 @@ class HelpCenter
                 'items' => [
                     ['question' => 'Bagaimana mengetahui apakah saya sedang PKL atau sudah masuk sekolah?', 'answer' => 'Status dihitung otomatis dari tanggal mulai dan selesai pada Kontrol PKL. Bila tanggal tidak sesuai, laporkan kepada koordinator; siswa tidak mengonfirmasi status secara manual.'],
                     ['question' => 'Bagaimana mengisi jurnal?', 'answer' => 'Buka Jurnal & Foto, pilih penempatan, isi tanggal, kegiatan, ruang/jam/peralatan, serta nilai industri bila sudah diberikan. Foto opsional dan tanggal harus berada dalam jadwal PKL.'],
-                    ['question' => 'Bagaimana validasi jurnal oleh industri?', 'answer' => 'Tunjukkan ringkasan kepada pembimbing. Setelah isi dan nilai cocok, tampilkan QR jurnal agar dipindai dengan perangkat pembimbing yang telah didaftarkan. Scan boleh dilakukan pada hari berbeda dan waktu scan tetap tercatat.'],
+                    ['question' => 'Bagaimana validasi jurnal oleh industri?', 'answer' => 'Tunjukkan ringkasan kepada pembimbing. Setelah isi dan nilai cocok, tampilkan QR jurnal untuk dipindai melalui Portal Kiosk pada perangkat pembimbing yang telah didaftarkan. Pembimbing memeriksa informasi lalu menekan OK; Batal tidak menyimpan validasi. Scan boleh dilakukan pada hari berbeda dan waktu scan tetap tercatat.'],
                     ['question' => 'Mengapa nilai atau sertifikat belum terlihat?', 'answer' => 'Nilai harus dicatat dan disahkan koordinator terlebih dahulu. Sertifikat juga memerlukan data lengkap, persetujuan, dan proses penerbitan. Hubungi koordinator bila tahap tersebut seharusnya sudah selesai.'],
                 ],
             ],
@@ -262,7 +262,7 @@ class HelpCenter
                     ['question' => 'Apa urutan menyiapkan siswa PKL?', 'answer' => 'Masukkan Data Siswa/roster, buat tag tahun, atur tanggal di Kontrol PKL per jurusan atau siswa, lalu lakukan Penempatan ke perusahaan. Guru bersifat opsional.'],
                     ['question' => 'Bagaimana memakai dua akun koordinator?', 'answer' => 'Setiap koordinator harus memakai akunnya sendiri. Sistem menyimpan ID pencatat/pengubah sehingga jangan berbagi akun meskipun wewenangnya sama.'],
                     ['question' => 'Bagaimana alur nilai sampai sertifikat?', 'answer' => 'Buat template aspek per jurusan, cari siswa dengan nama/NIS, input nilai persis dari industri, unggah bukti bila ada, sahkan nilai, pilih template cetak, pratinjau, ajukan dan setujui sertifikat, lalu catat distribusinya.'],
-                    ['question' => 'Bagaimana mendaftarkan perangkat pembimbing industri?', 'answer' => 'Buka Jurnal → Pembimbing Industri & Perangkat QR, hubungkan siswa, lalu buat QR pendaftaran sekali pakai. Pembimbing memindainya dengan perangkat sendiri. Cabut perangkat yang hilang atau tidak lagi digunakan.'],
+                    ['question' => 'Bagaimana mendaftarkan perangkat pembimbing industri?', 'answer' => 'Buka Jurnal → Pembimbing Industri & Perangkat QR, hubungkan siswa, lalu buat QR pendaftaran sekali pakai. Pembimbing memindainya dengan HP dan browser sendiri hingga Portal Kiosk terbuka. Setelah itu pembimbing dapat memindai banyak QR siswa secara berurutan, memeriksa data, dan memilih OK atau Batal. Cabut perangkat yang hilang atau tidak lagi digunakan.'],
                     ['question' => 'Kapan memakai batch dan kapan per siswa?', 'answer' => 'Gunakan batch ketika tanggal atau penempatan sama untuk banyak siswa/jurusan. Lepaskan centang untuk pengecualian, kemudian koreksi individual hanya pada siswa yang benar-benar berbeda.'],
                 ],
             ],

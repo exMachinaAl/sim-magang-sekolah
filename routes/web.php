@@ -2,10 +2,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{AuthController,DashboardController,GuideController,MasterDataController,TimelineController,JournalController,MonitoringController,AssessmentController,CertificateController,UserController,ReportController,InternshipRosterController};
 Route::get('/',fn()=>redirect()->route('dashboard'));
-Route::prefix('industry')->middleware([\App\Http\Middleware\IndustryBrowser::class,'throttle:60,1'])->group(function(){
+Route::prefix('industry')->middleware([\App\Http\Middleware\IndustryBrowser::class,'throttle:120,1'])->group(function(){
  Route::get('/',[\App\Http\Controllers\IndustryJournalController::class,'home'])->name('industry.home');
+ Route::post('portal/pratinjau',[\App\Http\Controllers\IndustryJournalController::class,'portalPreview'])->name('industry.portal.preview');
+ Route::post('portal/validasi',[\App\Http\Controllers\IndustryJournalController::class,'portalValidate'])->name('industry.portal.validate');
  Route::match(['get','post'],'enroll/{token}',[\App\Http\Controllers\IndustryJournalController::class,'enroll'])->where('token','[A-Za-z0-9]{64}')->name('industry.enroll');
- Route::match(['get','post'],'scan/{token}',[\App\Http\Controllers\IndustryJournalController::class,'scan'])->where('token','[A-Za-z0-9]{64}')->name('industry.scan');
+ Route::get('scan/{token}',[\App\Http\Controllers\IndustryJournalController::class,'scan'])->where('token','[A-Za-z0-9]{64}')->name('industry.scan');
 });
 Route::middleware('guest')->group(function(){Route::get('login',[AuthController::class,'loginForm'])->name('login');Route::post('login',[AuthController::class,'login'])->name('login.attempt');});
 Route::middleware(['auth','active'])->group(function(){

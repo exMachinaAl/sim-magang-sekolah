@@ -132,6 +132,49 @@ class IndustryJournalController
         return view('industry.home',['device'=>$device,'recent'=>JournalIndustryValidation::where('industry_device_id',$device->id)->latest('scanned_at')->limit(10)->get()]);
     }
 
+    public function portalPreview(Request $request)
+    {
+        $device=$this->device($request);
+        $data=$request->validate(['token'=>'required|alpha_num|size:64']);
+        [$qr,$journal]=$this->scanContext($device,$data['token']);
+        $validation=JournalIndustryValidation::where('journal_id',$journal->id)->where('revision',$journal->revision)->first();
+        $already=(bool)$qr->used_at || (bool)$validation;
+        return response()->json([
+            'status'=>$already?'already_validated':'pending_confirmation',
+            'message'=>$already?'Jurnal dengan isi dan versi yang sama sudah dipindai.':'Periksa isi bersama siswa sebelum menekan OK.',
+            'journal'=>[
+                'student_name'=>$journal->placement->student->user->name,
+                'nis'=>$journal->placement->student->nis,
+                'activity_date'=>$journal->activity_date->format('d/m/Y'),
+                'activity'=>$journal->activity,
+                'work_area'=>$journal->work_area,
+                'starts_time'=>$journal->starts_time,
+                'ends_time'=>$journal->ends_time,
+                'equipment_notes'=>$journal->equipment_notes,
+                'outcome'=>$journal->outcome,
+                'obstacles'=>$journal->obstacles,
+                'industry_score'=>$journal->industry_score,
+                'score_category'=>$journal->scoreCategory(),
+                'revision'=>$journal->revision,
+            ],
+            'scanned_at'=>$validation?->scanned_at?->format('d/m/Y H:i:s'),
+        ]);
+    }
+
+    public function portalValidate(Request $request)
+    {
+        $device=$this->device($request);
+        $data=$request->validate(['token'=>'required|alpha_num|size:64','revision'=>'required|integer|min:1']);
+        [$qr,$journal]=$this->scanContext($device,$data['token']);
+        abort_unless($journal->revision===(int)$data['revision'],409,'Isi jurnal berubah. Pindai QR versi terbaru.');
+        [$validation,$created]=$this->validateScan($request,$device,$qr,$journal);
+        return response()->json([
+            'status'=>$created?'validated':'already_validated',
+            'message'=>$created?'Jurnal berhasil divalidasi.':'Jurnal dengan isi dan versi yang sama sudah dipindai.',
+            'scanned_at'=>$validation?->scanned_at?->format('d/m/Y H:i:s'),
+        ]);
+    }
+
     public function qr(Request $request, Journal $journal)
     {
         Access::placement($request->user(),$journal->placement_id);
@@ -154,15 +197,29 @@ class IndustryJournalController
     public function scan(Request $request, string $token)
     {
         $device=$this->device($request);
+        [$qr,$journal]=$this->scanContext($device,$token);
+        if($qr->used_at) return redirect()->route('industry.home')->with('success','Versi jurnal ini sudah tervalidasi; tidak dicatat dua kali.');
+        return view('industry.scan',[
+            'title'=>'Membuka portal validasi','mentor'=>$device->mentor,'journal'=>$journal,'action'=>url()->current(),
+            'portal'=>route('industry.home').'#scan='.$token,
+        ]);
+    }
+
+    private function scanContext(IndustryDevice $device,string $token): array
+    {
         $qr=DB::table('journal_scan_tokens')->where('token_hash',hash('sha256',$token))->first();
         abort_unless($qr,404);
-        $journal=Journal::with('placement.student.user')->findOrFail($qr->journal_id);
+        $journal=Journal::with(['placement.student.user','placement.company'])->findOrFail($qr->journal_id);
         $this->assertAssignment($device,$journal);
         abort_unless($journal->revision===$qr->revision && $journal->status!=='draft',409,'Isi jurnal berubah. Minta siswa menampilkan QR versi terbaru.');
-        if($qr->used_at) return redirect()->route('industry.home')->with('success','Versi jurnal ini sudah tervalidasi; tidak dicatat dua kali.');
-        abort_unless(now()->lt($qr->expires_at),410,'QR kedaluwarsa. Siswa dapat membuat QR baru, termasuk untuk kegiatan hari lalu.');
-        if($request->isMethod('get') || $request->isMethod('head')) return view('industry.scan',['title'=>'Memvalidasi jurnal','mentor'=>$device->mentor,'journal'=>$journal,'action'=>url()->current(),'automatic'=>true]);
-        DB::transaction(function()use($device,$qr,$request){
+        if(!$qr->used_at) abort_unless(now()->lt($qr->expires_at),410,'QR kedaluwarsa. Siswa dapat membuat QR baru, termasuk untuk kegiatan hari lalu.');
+        return [$qr,$journal];
+    }
+
+    private function validateScan(Request $request,IndustryDevice $device,object $qr,Journal $journal): array
+    {
+        $validation=null;$created=false;
+        DB::transaction(function()use($device,$qr,$request,&$validation,&$created){
             $locked=Journal::whereKey($qr->journal_id)->lockForUpdate()->firstOrFail();
             IndustryMentor::whereKey($device->industry_mentor_id)->lockForUpdate()->firstOrFail();
             $trusted=IndustryDevice::whereKey($device->id)->lockForUpdate()->firstOrFail();
@@ -170,7 +227,10 @@ class IndustryJournalController
             $this->assertAssignment($trusted,$locked);
             $scan=DB::table('journal_scan_tokens')->where('id',$qr->id)->lockForUpdate()->first();
             abort_unless($locked->revision===$scan->revision && $locked->status!=='draft' && $locked->industry_score!==null,409,'Jurnal berubah. Scan QR terbaru.');
-            if($scan->used_at) return;
+            if($scan->used_at) {
+                $validation=JournalIndustryValidation::where('journal_id',$locked->id)->where('revision',$locked->revision)->first();
+                return;
+            }
             abort_unless(now()->lt($scan->expires_at),410,'QR kedaluwarsa.');
             $validation=JournalIndustryValidation::firstOrCreate(['journal_id'=>$locked->id,'revision'=>$locked->revision],[
                 'industry_mentor_id'=>$trusted->industry_mentor_id,'industry_device_id'=>$trusted->id,
@@ -178,13 +238,14 @@ class IndustryJournalController
                     'nis'=>$locked->placement->student->nis,'mentor_name'=>$trusted->mentor->name,'company_name'=>$trusted->mentor->company->name],
                 'scanned_at'=>now(),'ip_address'=>$request->ip(),
             ]);
+            $created=$validation->wasRecentlyCreated;
             $locked->update(['validated_revision'=>$locked->revision]);
             $trusted->update(['last_used_at'=>now()]);
             DB::table('journal_scan_tokens')->where('id',$qr->id)->update(['used_at'=>now(),'updated_at'=>now()]);
             if($validation->wasRecentlyCreated) $this->kioskAudit('journal.industry_validated',$locked,['validation_id'=>$validation->id,
                 'revision'=>$locked->revision,'industry_mentor_id'=>$trusted->industry_mentor_id,'industry_device_id'=>$trusted->id,'scanned_at'=>now()->toIso8601String()]);
         });
-        return redirect()->route('industry.home')->with('success','Jurnal dan nilai tervalidasi. Waktu scan tercatat, terpisah dari tanggal kegiatan.');
+        return [$validation,$created];
     }
 
     private function assertAssignment(IndustryDevice $device, Journal $journal): void

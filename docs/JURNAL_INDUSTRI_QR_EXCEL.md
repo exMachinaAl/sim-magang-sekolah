@@ -7,11 +7,12 @@ Implementasi 23 Oktober 2026. Ini adalah upgrade jurnal; perbaikan besar sertifi
 1. Koordinator membuka **Jurnal & Foto → Pembimbing Industri & Perangkat QR**.
 2. Pilih perusahaan, cari siswa melalui nama/NIS, centang siswa, lalu daftarkan nama pembimbing (misalnya Dodi). Penugasan tambahan/pelepasan dapat dilakukan pada daftar pembimbing. Guru tidak dapat mendaftarkan identitas atau perangkat industri.
 3. Koordinator membuat QR pendaftaran dan menunjukkannya **langsung kepada Dodi**, bukan siswa/grup umum.
-4. Dodi memindai lewat Google Camera/Lens, membuka link, dan browser otomatis didaftarkan. Tanpa PIN. QR sekali pakai berlaku 24 jam; membuat QR baru membatalkan undangan lama yang belum digunakan. Perangkat yang sudah terdaftar tidak otomatis dicabut saat membuat undangan baru.
+4. Dodi memindai lewat Google Camera/Lens, membuka link, dan browser otomatis didaftarkan serta diarahkan ke **Portal Kiosk**. Tanpa PIN. QR sekali pakai berlaku 24 jam; membuat QR baru membatalkan undangan lama yang belum digunakan. Perangkat yang sudah terdaftar tidak otomatis dicabut saat membuat undangan baru.
 5. Siswa mencatat kegiatan melalui akun sendiri. Foto opsional. Data tambahan: ruang kerja, jam mulai/selesai, peralatan/bahan; hasil/kendala opsional. Tetap satu ringkasan per tanggal sesuai database lama; beberapa kegiatan sehari ditulis bersama.
 6. Dodi membaca kegiatan dan menyebutkan nilai. Siswa memasukkan angka persis, menyimpan, lalu membuka **Tampilkan ringkasan & QR untuk DUDI**. Tombol tersedia setelah jurnal bukan draf dan nilai terisi.
-7. Setelah isi cocok, Dodi memindai QR siswa dan membuka link pada browser terdaftar. Halaman otomatis mengirim POST untuk memvalidasi. Tidak perlu login sekolah/PIN atau mengetuk tombol persetujuan rutin; tombol manual hanya fallback jika JavaScript tidak berjalan.
-8. Jika scan gagal/tidak dilakukan, jurnal tetap tercatat, bisa diedit, dan bisa diekspor; statusnya **Belum divalidasi industri**.
+7. Setelah isi cocok, Dodi memindai QR siswa melalui scanner Portal Kiosk. Portal menampilkan nama, NIS, tanggal, kegiatan, dan nilai. Dodi memilih **OK, Validasi** untuk mengesahkan atau **Batal** untuk melewati tanpa menyimpan. Google Camera tetap dapat dipakai sebagai fallback dan akan mengarahkan QR jurnal kembali ke portal.
+8. Portal tetap terbuka untuk memindai siswa berikutnya. Scan ulang QR dengan jurnal dan revisi yang sama hanya menampilkan informasi bahwa jurnal sudah dipindai, tanpa dialog konfirmasi dan tanpa catatan ganda.
+9. Jika scan gagal/tidak dilakukan, jurnal tetap tercatat, bisa diedit, dan bisa diekspor; statusnya **Belum divalidasi industri**.
 
 Google Camera harus membuka link hasil scan; membaca QR tanpa membuka link tidak menghubungi server. Browser tetap memerlukan koneksi internet/jaringan ke aplikasi. Ini bukan aplikasi offline-sync atau identifikasi hardware.
 
@@ -39,7 +40,7 @@ Google Camera harus membuka link hasil scan; membaca QR tanpa membuka link tidak
 
 ## Kepercayaan perangkat: kelonggaran yang disengaja
 
-Identitas Dodi disimpan dalam cookie browser terenkripsi, HttpOnly, SameSite=Lax, terbatas path /industry; server hanya menyimpan hash token. Masa berlaku perangkat 180 hari, tidak diperpanjang otomatis, dan dapat dicabut.
+Identitas Dodi disimpan dalam cookie browser terenkripsi, HttpOnly, SameSite=Lax, terbatas pada path kiosk (`/industry` pada subdomain atau `/simmag/industry` pada mode base-path); server hanya menyimpan hash token. Masa berlaku perangkat 180 hari, tidak diperpanjang otomatis, dan dapat dicabut.
 
 Ini **bukti konfirmasi dari browser yang didaftarkan sebagai Dodi**, bukan bukti biometrik bahwa Dodi sendiri memegang HP. Siapa pun yang memakai browser tersebut dapat memvalidasi siswa yang ditugaskan. Siapa pun yang memperoleh QR pendaftaran sebelum digunakan dapat mendaftarkan browser sebagai Dodi. Kelonggaran ini mengikuti permintaan pengguna; QR pendaftaran wajib dibagikan secara privat. Tidak ada PIN harian/OTP yang ditambahkan diam-diam.
 
@@ -94,10 +95,12 @@ Seeder menambahkan **Dodi (Demo)** pada PT Mitra Teknologi (Demo) dan menautkan 
 1. Buka aplikasi melalui host yang dapat diakses kedua HP. localhost/127.0.0.1 di QR tidak menunjuk komputer server ketika dibuka pada HP lain. Atur domain/IP jaringan dan HTTPS sesuai lingkungan; pastikan URL aplikasi benar.
 2. Daftarkan HP Dodi lewat QR koordinator. Pastikan muncul nama pembimbing yang benar.
 3. Siswa simpan kegiatan kemarin dan nilai 88.25, lalu tampilkan ringkasan/QR.
-4. Dodi scan pada browser yang sama; cek kegiatan tetap tanggal kemarin, waktu scan hari ini, nilai 88.25.
-5. Edit nilai; QR lama harus ditolak dan validasi versi lama tetap terbaca. Scan QR baru.
-6. Cabut perangkat melalui koordinator; scan berikutnya harus ditolak.
-7. Ekspor tujuh entri seminggu, buka Excel/Print Preview, cek dua lembar cetak, nilai/predikat, catatan belum validasi, dan waktu scan.
+4. Di Portal Kiosk, aktifkan kamera dan scan QR jurnal. Pastikan ringkasan muncul tetapi jurnal belum tervalidasi sebelum tombol OK ditekan.
+5. Tekan Batal dan pastikan tidak ada validasi. Scan lagi, tekan OK, lalu cek kegiatan tetap tanggal kemarin, waktu scan hari ini, dan nilai 88.25.
+6. Scan QR yang sama lagi; portal harus memberi info sudah dipindai tanpa dialog konfirmasi dan tanpa catatan kedua.
+7. Edit nilai; QR lama harus ditolak dan validasi versi lama tetap terbaca. Scan QR baru.
+8. Cabut perangkat melalui koordinator; scan berikutnya harus ditolak.
+9. Ekspor tujuh entri seminggu, buka Excel/Print Preview, cek dua lembar cetak, nilai/predikat, catatan belum validasi, dan waktu scan.
 
 Pengujian otomatis mencakup endpoint/form, batas hak akses, cookie enrollment, penugasan, revisi, scan terlambat/ulang/kedaluwarsa, pencabutan, skor batas/desimal, template enam entri dan overflow, placeholder, filter/draf, dan keamanan string spreadsheet. Uji kamera Google Camera/HP serta cetak fisik belum dilakukan di lingkungan ini.
 

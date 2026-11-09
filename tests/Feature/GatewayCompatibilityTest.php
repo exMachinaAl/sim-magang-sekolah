@@ -231,7 +231,11 @@ class GatewayCompatibilityTest extends TestCase
             ->server()
             ->get('http://app.internal/industry', $headers)
             ->assertOk()
-            ->assertSee('Dodi Gateway');
+            ->assertSee('Dodi Gateway')
+            ->assertSee('src="https://'.$host.'/simmag/js/industry-kiosk.js"', false)
+            ->assertSee('data-preview-url="https://'.$host.'/simmag/industry/portal/pratinjau"', false)
+            ->assertSee('data-validate-url="https://'.$host.'/simmag/industry/portal/validasi"', false)
+            ->assertSee('data-scan-prefix="https://'.$host.'/simmag/industry/scan/"', false);
     }
 
     public function test_csrf_contract_still_accepts_valid_token_and_rejects_invalid_token(): void

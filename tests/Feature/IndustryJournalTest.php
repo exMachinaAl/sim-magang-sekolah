@@ -82,56 +82,108 @@ class IndustryJournalTest extends TestCase
         $this->assertDatabaseCount('industry_devices',1);
     }
 
-    public function test_trusted_device_can_scan_later_and_duplicate_scan_is_idempotent(): void
+    public function test_trusted_device_can_confirm_later_and_duplicate_scan_is_idempotent(): void
     {
         $journal=$this->journal(); $url=$this->qr($journal); $secret=$this->device();
+        $token=basename((string)parse_url($url,PHP_URL_PATH));
         auth()->logout();
         $this->withCookie('industry_device',$secret)->head($url)->assertOk();
         $this->assertDatabaseCount('journal_industry_validations',0);
         $this->assertNull(DB::table('journal_scan_tokens')->first()->used_at);
         $this->withCookie('industry_device',$secret)->get($url)->assertOk()->assertSee('88.00');
         $this->assertDatabaseCount('journal_industry_validations',0); // GET/prefetch must not write.
-        $this->withCookie('industry_device',$secret)->post($url)->assertRedirect(route('industry.home'));
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])
+            ->assertOk()->assertJsonPath('status','validated');
         $validation=JournalIndustryValidation::firstOrFail();
         $this->assertSame('2026-10-21',$validation->snapshot['activity_date']);
         $this->assertSame('2026-10-23 12:00:00',$validation->scanned_at->format('Y-m-d H:i:s'));
         $this->assertTrue($journal->fresh()->industryValidated());
-        $this->withCookie('industry_device',$secret)->post($url)->assertRedirect();
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])
+            ->assertOk()->assertJsonPath('status','already_validated');
+        $this->withCookie('industry_device',$secret)->post($url)->assertMethodNotAllowed();
         $this->assertDatabaseCount('journal_industry_validations',1);
         $this->assertSame(1,DB::table('audit_logs')->where('action','journal.industry_validated')->count());
         $this->assertNull(DB::table('audit_logs')->where('action','journal.industry_validated')->first()->user_id);
         $this->withCookie('industry_device',$secret)->get(route('industry.home'))->assertOk()->assertSee('Dodi Uji');
     }
 
+    public function test_portal_preview_requires_confirmation_and_repeated_scan_has_no_second_write(): void
+    {
+        $journal=$this->journal();
+        $url=$this->qr($journal);
+        $token=basename((string)parse_url($url,PHP_URL_PATH));
+        $secret=$this->device();
+        auth()->logout();
+
+        $preview=$this->withCookie('industry_device',$secret)->post(route('industry.portal.preview'),['token'=>$token])
+            ->assertOk()->assertJsonPath('status','pending_confirmation')
+            ->assertJsonPath('journal.nis',$this->placement->student->nis)
+            ->assertJsonPath('journal.revision',1);
+        $this->assertDatabaseCount('journal_industry_validations',0);
+        $this->assertNull(DB::table('journal_scan_tokens')->first()->used_at);
+
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])
+            ->assertOk()->assertJsonPath('status','validated');
+        $this->assertDatabaseCount('journal_industry_validations',1);
+        $this->assertNotNull(DB::table('journal_scan_tokens')->first()->used_at);
+
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.preview'),['token'=>$token])
+            ->assertOk()->assertJsonPath('status','already_validated');
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])
+            ->assertOk()->assertJsonPath('status','already_validated');
+        $this->assertDatabaseCount('journal_industry_validations',1);
+        $this->assertSame(1,DB::table('audit_logs')->where('action','journal.industry_validated')->count());
+
+        $this->withCookie('industry_device',$secret)->get($url)->assertRedirect(route('industry.home'));
+    }
+
+    public function test_google_camera_journal_link_opens_portal_instead_of_auto_validating(): void
+    {
+        $journal=$this->journal();
+        $url=$this->qr($journal);
+        $secret=$this->device();
+        auth()->logout();
+        $response=$this->withCookie('industry_device',$secret)->get($url)->assertOk();
+        $response->assertSee('Mengarahkan ke portal kiosk')->assertSee('window.location.replace',false)
+            ->assertDontSee("document.getElementById('scan-form').requestSubmit()",false);
+        $this->assertDatabaseCount('journal_industry_validations',0);
+        $this->assertNull(DB::table('journal_scan_tokens')->first()->used_at);
+    }
+
     public function test_untrusted_wrong_assignment_revoked_and_expired_devices_cannot_validate(): void
     {
         $journal=$this->journal(); $url=$this->qr($journal); auth()->logout();
-        $this->post($url)->assertForbidden();
+        $token=basename((string)parse_url($url,PHP_URL_PATH));
+        $endpoint=route('industry.portal.validate');
+        $payload=['token'=>$token,'revision'=>1];
+        $this->post($endpoint,$payload)->assertForbidden();
         $secret=$this->device();
         $this->mentor->placements()->detach();
-        $this->withCookie('industry_device',$secret)->post($url)->assertForbidden();
+        $this->withCookie('industry_device',$secret)->post($endpoint,$payload)->assertForbidden();
         $this->mentor->placements()->attach($this->placement->id);
         IndustryDevice::query()->update(['revoked_at'=>now()]);
-        $this->withCookie('industry_device',$secret)->post($url)->assertNotFound();
+        $this->withCookie('industry_device',$secret)->post($endpoint,$payload)->assertNotFound();
         IndustryDevice::query()->update(['revoked_at'=>null,'expires_at'=>now()->subMinute()]);
-        $this->withCookie('industry_device',$secret)->post($url)->assertNotFound();
+        $this->withCookie('industry_device',$secret)->post($endpoint,$payload)->assertNotFound();
         $this->assertDatabaseCount('journal_industry_validations',0);
     }
 
     public function test_edit_creates_new_revision_and_preserves_old_validation_without_reusing_old_qr(): void
     {
         $journal=$this->journal(); $url=$this->qr($journal); $secret=$this->device();
-        $this->withCookie('industry_device',$secret)->post($url)->assertRedirect();
+        $token=basename((string)parse_url($url,PHP_URL_PATH));
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])->assertOk();
         $data=['placement_id'=>$this->placement->id,'activity_date'=>'2026-10-21','activity'=>'Merakit panel baru','industry_score'=>91,
             'intent'=>'submitted','revision'=>1];
         $this->actingAs($this->placement->student->user)->post(route('journals.store'),$data)->assertSessionHasNoErrors();
         $journal->refresh();
         $this->assertSame(2,$journal->revision); $this->assertFalse($journal->industryValidated());
         $this->assertSame('88.00',JournalIndustryValidation::first()->snapshot['industry_score']);
-        $this->withCookie('industry_device',$secret)->post($url)->assertConflict();
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])->assertConflict();
         $this->post(route('journals.store'),$data)->assertSessionHasErrors('revision');
         $newUrl=$this->qr($journal);
-        $this->withCookie('industry_device',$secret)->post($newUrl)->assertRedirect();
+        $newToken=basename((string)parse_url($newUrl,PHP_URL_PATH));
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$newToken,'revision'=>2])->assertOk();
         $this->assertDatabaseCount('journal_industry_validations',2);
         $this->assertTrue($journal->fresh()->industryValidated());
     }
@@ -139,11 +191,13 @@ class IndustryJournalTest extends TestCase
     public function test_scan_after_pkl_finished_is_allowed_but_stale_qr_must_be_regenerated(): void
     {
         $journal=$this->journal(); $url=$this->qr($journal); $secret=$this->device();
+        $token=basename((string)parse_url($url,PHP_URL_PATH));
         $this->travel(2)->days();
-        $this->withCookie('industry_device',$secret)->post($url)->assertGone();
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$token,'revision'=>1])->assertGone();
         $this->placement->roster->update(['internship_ends_at'=>'2026-10-22']);
         $newUrl=$this->qr($journal);
-        $this->withCookie('industry_device',$secret)->post($newUrl)->assertRedirect();
+        $newToken=basename((string)parse_url($newUrl,PHP_URL_PATH));
+        $this->withCookie('industry_device',$secret)->post(route('industry.portal.validate'),['token'=>$newToken,'revision'=>1])->assertOk();
         $this->assertSame('2026-10-25',JournalIndustryValidation::first()->scanned_at->toDateString());
     }
 

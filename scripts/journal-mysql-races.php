@@ -50,8 +50,10 @@ function sourceFingerprint(Illuminate\Database\Connection $connection): array {
 }
 function requestFor(array $fixture,string $action,string $slot): Request {
     $params=$action==='edit'?['placement_id'=>$fixture['placement'],'activity_date'=>$fixture['date'],
-        'activity'=>'Perubahan dari tab '.$slot,'outcome'=>'Hasil uji sintetis','intent'=>'submitted','revision'=>1,'industry_score'=>91.25]:[];
-    $request=Request::create('/industry/scan/'.$fixture['token'],'POST',$params,['industry_device'=>$fixture['secret']]);
+        'activity'=>'Perubahan dari tab '.$slot,'outcome'=>'Hasil uji sintetis','intent'=>'submitted','revision'=>1,'industry_score'=>91.25]
+        :($action==='scan'?['token'=>$fixture['token'],'revision'=>1]:[]);
+    $path=$action==='scan'?'/industry/portal/validasi':'/industry/scan/'.$fixture['token'];
+    $request=Request::create($path,'POST',$params,['industry_device'=>$fixture['secret']]);
     $request->setLaravelSession(app('session')->driver());
     if ($action==='edit') {
         $user=User::findOrFail($fixture['student_user']); Auth::setUser($user);
@@ -87,7 +89,7 @@ if ($mode==='worker') {
     try {
         $request=requestFor($fixture,$fixture['action'],$slot);
         $response=match($fixture['action']) {
-            'scan'=>app(IndustryJournalController::class)->scan($request,$fixture['token']),
+            'scan'=>app(IndustryJournalController::class)->portalValidate($request),
             'enroll'=>app(IndustryJournalController::class)->enroll($request,$fixture['token']),
             'edit'=>app(JournalController::class)->store($request),
         };
@@ -195,7 +197,7 @@ try {
 
     $f=$fixtureFor(2);
     DB::beginTransaction(); Journal::whereKey($f['journal'])->lockForUpdate()->firstOrFail();
-    check($run(['scan_a'=>$f,'scan_b'=>$f])===[302,302],'Duplicate scans did not complete idempotently.');
+    check($run(['scan_a'=>$f,'scan_b'=>$f])===[200,200],'Duplicate scans did not complete idempotently.');
     check(JournalIndustryValidation::where('journal_id',$f['journal'])->count()===1,'Duplicate validation.');
     check(DB::table('audit_logs')->where('action','journal.industry_validated')->where('subject_id',$f['journal'])->count()===1,'Duplicate validation audit.');
     $record('Two overlapping scans: one validation and one audit');
