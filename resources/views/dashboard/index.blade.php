@@ -5,7 +5,8 @@
 @section('content')
 <div class="card"><form method="get" action="{{ route('dashboard') }}" class="form-grid">
 <div class="field"><label for="dashboard-period">Tag tahun ajaran</label><select id="dashboard-period" name="period_id">
-@forelse($periods as $period)<option value="{{ $period->id }}" @selected($chosen===$period->id)>{{ $period->academic_year }}</option>
+@if(!$chosen)<option value="" selected>Tidak ada tag aktif — pilih arsip bila diperlukan</option>@endif
+@forelse($periods as $period)<option value="{{ $period->id }}" @selected($chosen===$period->id)>{{ $period->academic_year }}{{ $period->is_active ? '' : ' (arsip)' }}</option>
 @empty<option value="">Belum ada data tahun ajaran</option>@endforelse
 </select></div><div><button class="btn btn-primary" type="submit">Tampilkan</button></div>
 </form><p class="small muted">Seluruh ringkasan mengikuti tahun terpilih dan hak akses Anda. Status PKL dihitung dari tanggal siswa di Kontrol PKL pada {{ $today->format('d/m/Y') }} WIB.</p></div>

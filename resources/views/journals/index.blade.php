@@ -9,13 +9,13 @@
  <div class="card-head"><div><h2>Rekap Jurnal per Penempatan</h2><p>Setiap siswa hanya muncul satu kali untuk setiap periode PKL.</p></div><span class="small muted">{{ $items->total() }} penempatan</span></div>
  <form method="GET" class="filterbar">
   <input name="q" value="{{ request('q') }}" placeholder="Cari nama atau NIS siswa..." aria-label="Cari nama atau NIS siswa">
-  <select name="period_id"><option value="">Semua periode</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected(request('period_id')==$period->id)>{{ $period->name }}</option>@endforeach</select>
+  <select name="period_id"><option value="" @selected($periodId===null)>Semua periode</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected((string)$periodId===(string)$period->id)>{{ $period->name }}{{ $period->is_active ? '' : ' (arsip)' }}</option>@endforeach</select>
   <select name="status"><option value="">Semua status jurnal</option>@foreach(\App\Models\Journal::statuses() as $key=>$label)<option value="{{ $key }}" @selected(request('status')===$key)>{{ $label }}</option>@endforeach</select>
   <input type="date" name="date_from" value="{{ request('date_from') }}" title="Dari tanggal" aria-label="Dari tanggal">
   <input type="date" name="date_to" value="{{ request('date_to') }}" title="Sampai tanggal" aria-label="Sampai tanggal">
   <button class="btn btn-secondary">Filter</button>
   <a href="{{ route('journals.index') }}" class="btn btn-ghost">Reset</a>
-  <a href="{{ route('journals.pdf',request()->only(['q','status','date_from','date_to','period_id'])) }}" class="btn btn-ghost">↓ Unduh Rekap PDF</a>
+  <a href="{{ route('journals.pdf',array_replace(request()->only(['q','status','date_from','date_to']),['period_id'=>$periodId])) }}" class="btn btn-ghost">↓ Unduh Rekap PDF</a>
  </form>
  <div class="table-wrap"><table>
   <thead><tr><th>Siswa</th><th>Penempatan</th><th>Ringkasan Jurnal</th><th>Review sekolah (opsional)</th><th>Aktivitas Terakhir</th><th></th></tr></thead>

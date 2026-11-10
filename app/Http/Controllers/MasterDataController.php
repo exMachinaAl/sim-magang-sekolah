@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 class MasterDataController {
  public function students(Request $r){
   $r->validate(['academic_year'=>['nullable','regex:/^\d{4}\/\d{4}$/'],'q'=>'nullable|string|max:100']);
-  $academicYear=$r->academic_year ?: InternshipRoster::currentAcademicYear();
+  $academicYear=$r->academic_year ?: (InternshipPeriod::defaultAcademicYear() ?? '');
   $majors=collect(InternshipRoster::officialMajors());
   $items=Student::with(['user','rosters'=>fn($q)=>$q->orderByDesc('academic_year')])->when($r->q,fn($q)=>$q->where('nis','like','%'.$r->q.'%')->orWhereHas('user',fn($q)=>$q->where('name','like','%'.$r->q.'%')))->latest()->paginate(15)->withQueryString();
   return view('masters.students',compact('items','majors','academicYear'));

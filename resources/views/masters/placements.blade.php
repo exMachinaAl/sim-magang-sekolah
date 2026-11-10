@@ -3,7 +3,7 @@
 @section('breadcrumb','Manajemen / Penempatan')
 @section('subtitle','Pilih siswa dari roster tahun ajaran, lalu tentukan industri dan pembimbing opsional.')
 @section('content')
-<div class="card"><form method="GET" class="filterbar"><label>Tag tahun ajaran<select name="period_id">@foreach($periods as $tag)<option value="{{ $tag->id }}" @selected($period?->id===$tag->id)>{{ $tag->academic_year }}{{ $tag->is_active ? '' : ' (arsip)' }}</option>@endforeach</select></label><button class="btn btn-primary">Buka Tag</button><a href="{{ route('periods.index') }}">Kelola Tag</a></form>
+<div class="card"><form method="GET" class="filterbar"><label>Tag tahun ajaran<select name="period_id">@if(!$period)<option value="" selected>Tidak ada tag aktif — pilih arsip bila diperlukan</option>@endif @foreach($periods as $tag)<option value="{{ $tag->id }}" @selected($period?->id===$tag->id)>{{ $tag->academic_year }}{{ $tag->is_active ? '' : ' (arsip)' }}</option>@endforeach</select></label><button class="btn btn-primary">Buka Tag</button><a href="{{ route('periods.index') }}">Kelola Tag</a></form>
 <p class="note-box">Tanggal dan fase siswa mengikuti <a href="{{ route('internships.index',['academic_year'=>$period?->academic_year]) }}">Kontrol PKL</a>. Penempatan tidak memulai/menyelesaikan PKL. Satu penempatan per siswa per tag tahun ajaran.</p></div>
 @if($period?->is_active)
 <div class="card"><h2>Penempatan Massal / Individual</h2><form method="POST" action="{{ route('placements.store') }}" id="placement-batch-form">@csrf

@@ -90,7 +90,7 @@ class CertificatePrintTest extends TestCase
     {
         $t=$this->template();
         $templatePage=$this->get(route('certificate-print-templates.index',['assessment_template_id'=>$this->assessmentTemplate->id]))->assertOk();
-        if (config('certificate_print.libreoffice') && is_file(config('certificate_print.libreoffice'))) {
+        if (CertificateDocx::converterAvailable()) {
             $templatePage->assertSee('LibreOffice server aktif');
         } else {
             $templatePage->assertSee('LibreOffice server belum dikonfigurasi');

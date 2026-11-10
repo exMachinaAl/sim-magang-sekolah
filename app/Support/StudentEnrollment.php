@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\{InternshipRoster, Student, User};
+use App\Models\{InternshipPeriod, InternshipRoster, Student, User};
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -59,9 +59,11 @@ class StudentEnrollment
     public function register(array $data, ?int $actorId = null): Student
     {
         return DB::transaction(function () use ($data, $actorId) {
+            $academicYear=$data['academic_year']??InternshipPeriod::defaultAcademicYear();
+            if (!$academicYear) throw ValidationException::withMessages(['academic_year'=>'Belum ada tag periode aktif. Aktifkan atau buat tag tahun ajaran sebelum mendaftarkan siswa.']);
             $student = $this->enroll($data);
             $roster = InternshipRoster::updateOrCreate([
-                'academic_year' => $data['academic_year'] ?? InternshipRoster::currentAcademicYear(),
+                'academic_year' => $academicYear,
                 'nis' => $student->nis,
             ], [
                 'student_id' => $student->id, 'name' => $student->user->name,

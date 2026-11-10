@@ -49,7 +49,7 @@ Smoke test browser terisolasi juga mencakup pendaftaran Dodi, cookie, CSRF, prat
 
 Hasil implementasi 9 November 2026:
 
-- Regresi penuh: **191 tes, 3.223 assertion lulus**.
+- Regresi penuh terbaru setelah pemeriksaan deployment LibreOffice dan default periode aktif: **195 tes, 3.290 assertion lulus**.
 - Tes terarah jurnal, gateway, dan bantuan: **34 tes, 1.035 assertion lulus**.
 - Smoke test Edge dengan konteks koordinator, siswa, dan Dodi: lulus, termasuk enrolment, konfirmasi OK, scan ulang idempotent, pencabutan perangkat, dan tidak ada error JavaScript yang tidak tertangani.
 - Pemeriksaan sintaks `industry-kiosk.js`, kompilasi Blade, dan `git diff --check`: lulus.

@@ -148,7 +148,7 @@ class HelpCenter
                 'key' => 'tag-pkl',
                 'title' => 'Periode / tag PKL',
                 'summary' => 'Periode adalah tag tahun ajaran, bukan sumber tanggal serentak seluruh siswa.',
-                'steps' => ['Buat tag seperti 2026/2027.', 'Gunakan Kontrol PKL untuk tanggal per jurusan atau per siswa.', 'Arsipkan tag yang tidak aktif tanpa mengubah status siswa secara manual.'],
+                'steps' => ['Buat tag seperti 2026/2027.', 'Gunakan Kontrol PKL untuk tanggal per jurusan atau per siswa.', 'Arsipkan tag yang tidak aktif tanpa mengubah status siswa secara manual.', 'Menu memakai tag aktif terbaru sebagai default. Tag arsip tetap dapat dipilih untuk melihat riwayat, tetapi tidak dipilih otomatis.'],
             ],
             'reports.*' => [
                 'key' => 'laporan-audit',

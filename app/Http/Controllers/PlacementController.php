@@ -13,9 +13,9 @@ class PlacementController
     public function index(Request $request)
     {
         $request->validate(['period_id'=>'nullable|integer|exists:internship_periods,id','q'=>'nullable|string|max:100']);
-        $periods = InternshipPeriod::whereNotNull('academic_year')->orderByDesc('academic_year')->get();
+        $periods = InternshipPeriod::whereNotNull('academic_year')->forSelection()->get();
         $period = $request->filled('period_id') ? $periods->firstWhere('id',$request->integer('period_id'))
-            : ($periods->firstWhere('academic_year',InternshipRoster::currentAcademicYear()) ?? $periods->first());
+            : InternshipPeriod::defaultFrom($periods);
         $items = Access::placements($request->user())->with(['student.user','company','period','teacher','roster'])
             ->where('internship_period_id',$period?->id ?? 0)
             ->when($request->q, fn ($q,$term) => $q->whereHas('student',fn($s)=>$s->where('nis','like','%'.$term.'%')->orWhereHas('user',fn($u)=>$u->where('name','like','%'.$term.'%'))))

@@ -13,8 +13,8 @@ class DashboardController {
   $periods=InternshipPeriod::where(function($q) use ($rosters,$placements) {
    $q->whereIn('id',(clone $rosters)->select('internship_period_id'))
     ->orWhereIn('id',(clone $placements)->select('internship_period_id'));
-  })->orderByDesc('academic_year')->orderByDesc('id')->get();
-  $chosen=(int)($data['period_id']??$periods->firstWhere('academic_year',InternshipRoster::currentAcademicYear())?->id??$periods->first()?->id);
+  })->forSelection()->get();
+  $chosen=(int)($data['period_id']??InternshipPeriod::defaultFrom($periods)?->id);
   abort_if($chosen && !$periods->contains('id',$chosen),404);
   $rosters->where('internship_period_id',$chosen);
   $placements->where('internship_period_id',$chosen);

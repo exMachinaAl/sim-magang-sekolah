@@ -8,7 +8,7 @@
  <form method="GET" action="{{ route('monitoring.index') }}">
   <div class="form-grid">
    <div class="form-field"><label for="monitoring-q">Nama / NIS</label><input id="monitoring-q" name="q" value="{{ $q }}" maxlength="100" placeholder="Ketik nama atau NIS siswa"></div>
-   <div class="form-field"><label for="monitoring-period">Tag Tahun Ajaran</label><select id="monitoring-period" name="period_id"><option value="">Semua tahun</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected((string)$periodId === (string)$period->id)>{{ $period->academic_year }}</option>@endforeach</select></div>
+   <div class="form-field"><label for="monitoring-period">Tag Tahun Ajaran</label><select id="monitoring-period" name="period_id"><option value="" @selected($periodId===null)>Semua tahun</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected((string)$periodId === (string)$period->id)>{{ $period->academic_year }}{{ $period->is_active ? '' : ' (arsip)' }}</option>@endforeach</select></div>
    <div class="form-field"><label for="monitoring-major">Jurusan pada Tahun PKL</label><select id="monitoring-major" name="major"><option value="">Semua jurusan</option>@foreach($majors as $name)<option value="{{ $name }}" @selected($major === $name)>{{ $name }}</option>@endforeach</select></div>
    <div class="form-field"><label for="monitoring-status">Status riwayat kasus</label><select id="monitoring-status" name="case_status"><option value="">Semua status</option>@foreach(\App\Models\MonitoringRecord::statuses() as $key=>$label)<option value="{{ $key }}" @selected(request('case_status')===$key)>{{ $label }}</option>@endforeach</select></div>
    <div class="form-field"><label for="monitoring-category-filter">Kategori riwayat kasus</label><select id="monitoring-category-filter" name="category"><option value="">Semua kategori</option>@foreach(\App\Models\MonitoringRecord::categories() as $key=>$label)<option value="{{ $key }}" @selected(request('category')===$key)>{{ $label }}</option>@endforeach</select></div>
@@ -16,9 +16,9 @@
   <div class="form-footer"><button class="btn btn-primary">Cari</button><a class="btn btn-ghost" href="{{ route('monitoring.index') }}">Reset</a></div>
  </form>
  <p class="small muted">Nama/NIS, tahun dan jurusan menyaring siswa serta riwayat. Status/kategori hanya menyaring riwayat kasus. Catatan ini mengikuti penempatan PKL; siswa belum ditempatkan tetap dikelola melalui Kontrol PKL.</p>
- @if($q !== '' || $major !== '' || $periodId)
+ @if($showCandidates)
  <div class="table-wrap"><table><thead><tr><th>Siswa / NIS</th><th>Kelas / Jurusan</th><th>Tahun</th><th></th></tr></thead><tbody>
- @forelse($candidates as $p)<tr><td>{{ $p->student->user->name }}<br>{{ $p->student->nis }}</td><td>{{ $p->roster?->class_name ?? '—' }}<br>{{ $p->roster?->major ?? 'Roster belum terhubung' }}</td><td>{{ $p->period->academic_year }}</td><td><a class="btn btn-sm btn-ghost" href="{{ route('monitoring.index', ['placement_id' => $p->id]) }}">Buka siswa</a></td></tr>
+ @forelse($candidates as $p)<tr><td>{{ $p->student->user->name }}<br>{{ $p->student->nis }}</td><td>{{ $p->roster?->class_name ?? '—' }}<br>{{ $p->roster?->major ?? 'Roster belum terhubung' }}</td><td>{{ $p->period->academic_year }}</td><td><a class="btn btn-sm btn-ghost" href="{{ route('monitoring.index', ['placement_id' => $p->id,'period_id'=>$periodId,'major'=>$major,'q'=>$q]) }}">Buka siswa</a></td></tr>
  @empty<tr><td colspan="4">Tidak ada siswa yang sesuai pencarian atau hak akses.</td></tr>@endforelse
  </tbody></table></div>
  @include('partials.pager', ['items' => $candidates])

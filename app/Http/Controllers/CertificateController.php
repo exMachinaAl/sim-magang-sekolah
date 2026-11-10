@@ -10,21 +10,22 @@ class CertificateController {
   $filters=$r->validate(['q'=>'nullable|string|max:100','status'=>['nullable',\Illuminate\Validation\Rule::in(array_keys(Certificate::statuses()))],
    'period_id'=>'nullable|integer|exists:internship_periods,id','major'=>'nullable|string|max:150']);
   $user=$r->user(); $search=trim($filters['q']??'');
+  $periods=\App\Models\InternshipPeriod::whereIn('id',Access::placements($user)->select('internship_period_id'))->forSelection()->get();
+  $periodId=$r->has('period_id')?($filters['period_id']??null):\App\Models\InternshipPeriod::defaultFrom($periods)?->id;
   $scope=Access::placements($user)->when($search!=='',fn($q)=>$q->whereHas('student',fn($s)=>$s->where('nis','like','%'.$search.'%')->orWhereHas('user',fn($u)=>$u->where('name','like','%'.$search.'%'))))
-   ->when($filters['period_id']??null,fn($q,$id)=>$q->where('internship_period_id',$id))
+   ->when($periodId,fn($q,$id)=>$q->where('internship_period_id',$id))
    ->when($filters['major']??null,fn($q,$major)=>$q->whereHas('roster',fn($r)=>$r->where('major',$major)));
   $items=Access::certificates($user)->whereIn('placement_id',(clone $scope)->select('id'))->with(['placement.student.user','placement.company','placement.period','approvals'])
    ->when($filters['status']??null,fn($q,$status)=>$q->where('status',$status))->latest()->paginate(15)->withQueryString();
   $placements=$user->isRole('koordinator') && $search!==''?(clone $scope)
    ->doesntHave('certificate')->with(['student.user','assessment','roster','period','company'])->latest()->paginate(10,['*'],'candidates_page')->withQueryString():collect();
-  $periods=\App\Models\InternshipPeriod::whereIn('id',Access::placements($user)->select('internship_period_id'))->latest()->get();
   $demoCertificate=null;
   if(app()->environment(['local','testing']) && $user->isRole('koordinator')) {
    $demoCertificate=Certificate::whereHas('placement.roster',fn($q)=>$q->where('nis','DEMO-SERT-001')
     ->where('notes','DATA DEMO FIKTIF: sertifikat siap uji, bukan dokumen resmi.'))
     ->select('id','placement_id','print_template_id')->first();
   }
-  return view('certificates.index',compact('items','placements','periods','demoCertificate'));
+  return view('certificates.index',compact('items','placements','periods','periodId','demoCertificate'));
  }
  public function create(Request $r){
   abort_unless($r->user()->isRole('koordinator'),403);

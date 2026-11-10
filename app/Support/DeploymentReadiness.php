@@ -132,6 +132,13 @@ class DeploymentReadiness
         $add('writable_runtime', 'required', $writable,
             $writable ? 'Storage privat, framework, dan log dapat ditulis.' : 'Izin tulis storage runtime belum benar.');
 
+        $libreOffice=(string) config('certificate_print.libreoffice');
+        $libreOfficeValid=$libreOffice==='' || CertificateDocx::converterAvailable();
+        $add('libreoffice_converter', 'advisory', $libreOfficeValid,
+            $libreOffice==='' ? 'Konverter DOCX opsional tidak diaktifkan; PDF bawaan/dekorasi tetap tersedia.'
+                : ($libreOfficeValid ? 'Executable LibreOffice tersedia dan dapat dijalankan.'
+                    : 'CERTIFICATE_LIBREOFFICE terisi tetapi bukan executable server yang dapat dijalankan. Periksa path Windows/Linux dan izin akun PHP.'));
+
         $logLevel = strtolower((string) config('logging.channels.single.level'));
         $add('production_log_level', 'required', ! in_array($logLevel, ['', 'debug'], true),
             ! in_array($logLevel, ['', 'debug'], true) ? 'Level log tidak debug.' : 'LOG_LEVEL harus info, warning, atau lebih ketat.');

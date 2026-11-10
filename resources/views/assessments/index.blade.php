@@ -6,7 +6,7 @@
 <div class="card"><h2>Cari siswa / rekap penilaian</h2>
 <form method="GET" action="{{ route('assessments.index') }}"><div class="form-grid">
 <label>Nama atau NIS<input name="q" value="{{ $search }}" placeholder="Ketik nama atau NIS siswa" maxlength="100"></label>
-<label>Tag tahun ajaran<select name="period_id"><option value="">Semua tahun</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected((string)request('period_id')===(string)$period->id)>{{ $period->academic_year }}</option>@endforeach</select></label>
+<label>Tag tahun ajaran<select name="period_id"><option value="" @selected($periodId===null)>Semua tahun</option>@foreach($periods as $period)<option value="{{ $period->id }}" @selected((string)$periodId===(string)$period->id)>{{ $period->academic_year }}{{ $period->is_active ? '' : ' (arsip)' }}</option>@endforeach</select></label>
 <label>Jurusan pada tahun PKL<select name="major"><option value="">Semua jurusan</option>@foreach($majors as $major)<option value="{{ $major }}" @selected(request('major')===$major)>{{ $major }}</option>@endforeach</select></label>
 </div><div class="form-footer"><button class="btn btn-primary">Cari</button><a class="btn btn-ghost" href="{{ route('assessments.index') }}">Reset</a></div></form>
 <p class="small muted">Pencarian dan filter berlaku pada rekap serta kandidat input nilai. Kandidat siswa hanya tampil setelah nama/NIS dicari. Kelas/jurusan mengikuti roster tahun PKL, bukan profil terbaru.</p></div>
@@ -15,7 +15,7 @@
 @if($search !== '')
 <div class="table-wrap"><table><thead><tr><th>Nama / NIS</th><th>Kelas / Jurusan</th><th>Periode / Industri</th><th></th></tr></thead><tbody>
 @forelse($placements as $placement)
-<tr><td>{{ $placement->student->user->name }}<div>NIS {{ $placement->student->nis }}</div></td><td>{{ $placement->roster?->class_name ?? '—' }}<div>{{ $placement->roster?->major ?? 'Roster belum terhubung' }}</div></td><td>{{ $placement->period->academic_year }}<div>{{ $placement->company->name }}</div></td><td><a class="btn btn-secondary btn-sm" href="{{ route('assessments.index',['q'=>$search,'period_id'=>request('period_id'),'major'=>request('major'),'placement_id'=>$placement->id]) }}">Buka Penilaian</a></td></tr>
+<tr><td>{{ $placement->student->user->name }}<div>NIS {{ $placement->student->nis }}</div></td><td>{{ $placement->roster?->class_name ?? '—' }}<div>{{ $placement->roster?->major ?? 'Roster belum terhubung' }}</div></td><td>{{ $placement->period->academic_year }}<div>{{ $placement->company->name }}</div></td><td><a class="btn btn-secondary btn-sm" href="{{ route('assessments.index',['q'=>$search,'period_id'=>$periodId,'major'=>request('major'),'placement_id'=>$placement->id]) }}">Buka Penilaian</a></td></tr>
 @empty<tr><td colspan="4">Tidak ditemukan penempatan untuk nama/NIS tersebut. Pastikan siswa sudah terdaftar di Penempatan PKL, bukan hanya di Kontrol PKL.</td></tr>@endforelse
 </tbody></table></div>@include('partials.pager',['items'=>$placements])
 @endif

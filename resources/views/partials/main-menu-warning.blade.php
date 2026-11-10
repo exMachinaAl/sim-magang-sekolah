@@ -5,7 +5,7 @@
     @if($module==='certificates')
     <p><strong>PDF bawaan sudah bisa digunakan.</strong> Flag ini tidak mengunci seluruh fitur sertifikat.</p>
     <p class="small">DOCX dari arsip lengkap yang sudah disahkan juga bisa disiapkan dan diunduh tanpa LibreOffice melalui detail sertifikat.</p>
-    <p class="small">DOCX → PDF: {{ config('certificate_print.libreoffice') && is_file(config('certificate_print.libreoffice')) ? 'mesin sudah dikonfigurasi; hasil cetak masih perlu diuji.' : 'belum siap, menunggu LibreOffice. Gunakan PDF bawaan untuk pengujian sekarang.' }}</p>
+    <p class="small">DOCX → PDF: {{ \App\Support\CertificateDocx::converterAvailable() ? 'mesin sudah dikonfigurasi; hasil cetak masih perlu diuji.' : 'belum siap atau executable tidak dapat dijalankan. Gunakan PDF bawaan untuk pengujian sekarang.' }}</p>
     @else<p>{{ $health['summary'] }}</p>@endif
     <details>
         <summary>Lihat masalah dan rencana perbaikan · urutan {{ $health['order'] }} / 6 ({{ $health['priority'] }})</summary>

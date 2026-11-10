@@ -31,9 +31,9 @@ class TimelineController
             $selectedRoster=$linked;
         }
         $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))
-            ->orderByDesc('academic_year')->orderByDesc('id')->get();
+            ->forSelection()->get();
         $chosen=(int)($data['period_id']??$selectedRoster?->internship_period_id
-            ??$periods->firstWhere('academic_year',InternshipRoster::currentAcademicYear())?->id??$periods->first()?->id);
+            ??InternshipPeriod::defaultFrom($periods)?->id);
         abort_if($chosen && !$periods->contains('id',$chosen),404);
         abort_if($selectedRoster && (int)$selectedRoster->internship_period_id!==$chosen,404);
         $base->where('internship_period_id',$chosen);

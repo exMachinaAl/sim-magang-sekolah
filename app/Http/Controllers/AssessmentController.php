@@ -18,9 +18,10 @@ class AssessmentController
         $search = trim((string) $request->input('q', ''));
         $user = $request->user();
         $base=Access::placements($user);
-        $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))->orderByDesc('academic_year')->get();
+        $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))->forSelection()->get();
+        $periodId=$request->has('period_id')?($filters['period_id']??null):InternshipPeriod::defaultFrom($periods)?->id;
         $majors=InternshipRoster::whereIn('id',(clone $base)->select('internship_roster_id'))->select('major')->distinct()->orderBy('major')->pluck('major');
-        $scope=(clone $base)->when($filters['period_id']??null,fn($q,$id)=>$q->where('internship_period_id',$id))
+        $scope=(clone $base)->when($periodId,fn($q,$id)=>$q->where('internship_period_id',$id))
             ->when($filters['major']??null,fn($q,$major)=>$q->whereHas('roster',fn($r)=>$r->where('major',$major)))
             ->when($search!=='',fn($q)=>$q->whereHas('student',fn($s)=>$s->where(function($s) use($search) {
                 $s->where('nis','like','%'.$search.'%')->orWhereHas('user',fn($u)=>$u->where('name','like','%'.$search.'%'));
@@ -57,7 +58,7 @@ class AssessmentController
             }
         }
         $snapshot = $assessment?->template_snapshot ?: $selectedTemplate?->snapshot();
-        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'defaultTemplateId', 'assessment', 'templates', 'snapshot', 'search','periods','majors'));
+        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'defaultTemplateId', 'assessment', 'templates', 'snapshot', 'search','periods','periodId','majors'));
     }
 
     public function store(Request $request)

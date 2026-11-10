@@ -14,8 +14,8 @@ class ReportController
     {
         $data=$request->validate(['period_id'=>'nullable|integer|min:1|exists:internship_periods,id',
             'major'=>'nullable|string|max:150', 'page'=>'nullable|integer|min:1']);
-        $periods=InternshipPeriod::orderByDesc('academic_year')->orderByDesc('id')->get();
-        $chosen=(int)($data['period_id']??$periods->firstWhere('academic_year',InternshipRoster::currentAcademicYear())?->id??$periods->first()?->id);
+        $periods=InternshipPeriod::forSelection()->get();
+        $chosen=(int)($data['period_id']??InternshipPeriod::defaultFrom($periods)?->id);
         $major=$data['major']??'';
         $majors=InternshipRoster::where('internship_period_id',$chosen)->distinct()->orderBy('major')->pluck('major');
         // Preserve an unmatched filter rather than silently exporting another major.

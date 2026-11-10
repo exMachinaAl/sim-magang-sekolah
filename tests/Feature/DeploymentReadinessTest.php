@@ -84,5 +84,18 @@ class DeploymentReadinessTest extends TestCase
         $this->assertFalse($report['checks']['fixed_hostname']['passed']);
         $this->artisan('simmag:check-deployment', ['--target' => 'invalid'])->assertExitCode(2);
     }
+
+    public function test_stale_cross_platform_libreoffice_path_is_reported_without_exposing_it(): void
+    {
+        $secretPath = '/path-tidak-ada/rahasia/soffice.exe';
+        config(['certificate_print.libreoffice' => $secretPath]);
+
+        $report = app(DeploymentReadiness::class)->inspect('staging');
+
+        $this->assertFalse($report['checks']['libreoffice_converter']['passed']);
+        $this->assertSame('advisory', $report['checks']['libreoffice_converter']['level']);
+        $this->assertStringContainsString('path Windows/Linux', $report['checks']['libreoffice_converter']['message']);
+        $this->assertStringNotContainsString($secretPath, json_encode($report, JSON_THROW_ON_ERROR));
+    }
 }
 

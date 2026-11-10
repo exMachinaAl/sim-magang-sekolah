@@ -75,9 +75,15 @@ CACHE_STORE=file
 QUEUE_CONNECTION=sync
 FILESYSTEM_DISK=local
 LOG_LEVEL=info
+
+# Opsional, wajib hanya untuk renderer sertifikat DOCX → PDF.
+# Pastikan nilai aktual dengan `command -v soffice` pada Debian.
+CERTIFICATE_LIBREOFFICE=/usr/bin/soffice
 ```
 
 Wildcard hanya berlaku sebagai suffix (`*.contoh.test`), tidak menerima domain induknya kecuali domain induk juga didaftarkan. Untuk domain produksi tetap, exact host lebih ketat. Perubahan hostname/suffix dilakukan pada environment AppCtl, dilanjutkan `php artisan config:cache` dan restart process; source tidak berubah.
+
+LibreOffice yang terpasang pada OS tidak otomatis dipilih aplikasi. Path binary harus berasal dari environment server; jangan membawa nilai `soffice.exe` dari `.env` Windows. Konverter berjalan headless dan tidak memerlukan service LibreOffice terpisah. Font DOCX juga wajib tersedia pada Debian karena font substitusi dapat mengubah presisi layout. Lihat [panduan LibreOffice Debian untuk sertifikat](LIBREOFFICE_DEBIAN_SERTIFIKAT.md).
 
 `APP_URL` adalah fallback untuk command CLI, bukan pemilih mode ingress. Jangan mengisinya dengan `/simmag`, karena aplikasi yang sama juga melayani root subdomain.
 
@@ -128,8 +134,8 @@ Tes gateway memeriksa root/subdomain, base-path, aset/form, nested route dan ref
 
 Hasil lokal 9 November 2026:
 
-- regresi PHPUnit lengkap: **187 tes / 3.172 assertion, lulus**;
-- tes gateway/proxy/readiness terarah: **13 tes / 73 assertion, lulus**;
+- regresi PHPUnit lengkap: **195 tes / 3.290 assertion, lulus**;
+- tes gateway/proxy/readiness terarah: **15 tes / 95 assertion, lulus**;
 - smoke browser Edge pada SQLite dan storage sementara: **lulus**, termasuk login/logout, CSRF nyata, jurnal/foto, kiosk Dodi, QR, timeline, monitoring, role, penilaian, sertifikat dua keluaran, DOCX, dan FAQ;
 - `config:cache`, `route:cache`, `view:cache`, `composer validate`, kebutuhan platform Composer, serta `git diff --check`: **lulus**;
 - pemeriksaan `.env` lokal dengan target staging bekerja dan aman, tetapi sengaja belum siap: `APP_ENV=local` dan `LOG_LEVEL=debug` adalah dua kegagalan wajib; hostname IP dan akun demo adalah dua saran;

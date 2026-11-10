@@ -25,7 +25,7 @@ class InternshipRosterController
         $selectedMajor = $request->major ?: null;
         $batchMode = $request->boolean('batch');
         $showStudents = $selectedMajor || $search !== '' || $request->filled('roster_id');
-        $academicYear = $request->academic_year ?: $this->currentAcademicYear();
+        $academicYear = $request->academic_year ?: (InternshipPeriod::defaultAcademicYear() ?? '');
         $base = InternshipRoster::query()->where('academic_year', $academicYear);
         $allForYear = (clone $base)->get();
         $lifecycleCounts = $allForYear->countBy(fn (InternshipRoster $roster) => $roster->lifecycleState());
@@ -63,6 +63,7 @@ class InternshipRosterController
             ->when(! $showStudents, fn ($q) => $q->whereRaw('1 = 0'))
             ->with(['period', 'updater', 'scheduleBatch.creator'])->orderBy('major')->orderBy('class_name')->orderBy('name')
             ->paginate(25)->withQueryString();
+        $periods = InternshipPeriod::forSelection()->get();
         $academicYears = InternshipRoster::query()->distinct()->orderByDesc('academic_year')->pluck('academic_year');
         if (! $academicYears->contains($academicYear)) {
             $academicYears->prepend($academicYear);
@@ -79,7 +80,8 @@ class InternshipRosterController
             'batchCandidates' => $batchMode ? (clone $base)->orderBy('major')->orderBy('class_name')->orderBy('name')->get() : collect(),
             'recentBatches' => InternshipScheduleBatch::with('creator')->where('academic_year', $academicYear)
                 ->latest()->limit(8)->get(),
-            'periods' => InternshipPeriod::orderByDesc('academic_year')->get(),
+            'periods' => $periods,
+            'periodStates' => $periods->keyBy('academic_year'),
             'academicYears' => $academicYears,
             'academicYear' => $academicYear,
         ]);
@@ -394,7 +396,7 @@ class InternshipRosterController
 
     public function export(Request $request)
     {
-        $academicYear = $request->academic_year ?: $this->currentAcademicYear();
+        $academicYear = $request->academic_year ?: (InternshipPeriod::defaultAcademicYear() ?? '');
         $items = $this->filteredQuery($request, $academicYear)->with(['period', 'student'])
             ->orderBy('major')->orderBy('class_name')->orderBy('name')->get();
         $filename = 'data-status-magang-'.str_replace('/', '-', $academicYear).'.csv';
@@ -587,6 +589,6 @@ class InternshipRosterController
 
     private function currentAcademicYear(): string
     {
-        return InternshipRoster::currentAcademicYear();
+        return InternshipPeriod::defaultAcademicYear() ?: InternshipRoster::currentAcademicYear();
     }
 }

@@ -5,7 +5,7 @@
 @section('content')
 <div class="card timeline-navigator">
 <form method="GET" class="timeline-search-form">
-<div><label for="timeline-period">Tag tahun ajaran</label><select id="timeline-period" name="period_id">@forelse($periods as $period)<option value="{{ $period->id }}" @selected($chosen===$period->id)>{{ $period->name }}</option>@empty<option value="">Belum ada roster</option>@endforelse</select></div>
+<div><label for="timeline-period">Tag tahun ajaran</label><select id="timeline-period" name="period_id">@if(!$chosen)<option value="" selected>Tidak ada tag aktif — pilih arsip bila diperlukan</option>@endif @forelse($periods as $period)<option value="{{ $period->id }}" @selected($chosen===$period->id)>{{ $period->name }}{{ $period->is_active ? '' : ' (arsip)' }}</option>@empty<option value="">Belum ada roster</option>@endforelse</select></div>
 <div class="search-wide"><label for="timeline-search">Cari jurusan, siswa, atau pendamping</label><input id="timeline-search" name="q" value="{{ $search }}" maxlength="100" placeholder="Jurusan, nama, NIS, NISN, nama guru / NIP"></div>
 <button class="btn btn-primary">Cari</button><a class="btn btn-ghost" href="{{ route('timeline.index',['period_id'=>$chosen ?: null]) }}">Reset / awal</a>
 </form><p class="small muted">Pencarian mencakup tahun terpilih sesuai hak akses. Guru hanya melihat siswa penugasannya; siswa melihat roster miliknya. Tanggal acuan {{ $today->format('d/m/Y') }} (WIB); muat ulang setelah pergantian hari.</p>

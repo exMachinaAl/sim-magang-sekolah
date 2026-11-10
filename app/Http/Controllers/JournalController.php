@@ -21,6 +21,10 @@ class JournalController
         ] + JournalDateFilter::rules($request));
 
         $hasJournalFilter = ! empty($filters['status']) || ! empty($filters['date_from']) || ! empty($filters['date_to']);
+        $periods = \App\Models\InternshipPeriod::query()
+            ->whereIn('id', Access::placements($request->user())->select('internship_period_id'))
+            ->forSelection()->get();
+        $periodId=$request->has('period_id')?($filters['period_id']??null):\App\Models\InternshipPeriod::defaultFrom($periods)?->id;
         $items = Access::placements($request->user())
             ->with(['student.user', 'company', 'period'])
             ->withCount([
@@ -34,7 +38,7 @@ class JournalController
             ])
             ->withMax('journals', 'activity_date')
             ->when($filters['q'] ?? null, fn ($q, $term) => $q->whereHas('student', fn ($s) => $s->where('nis','like','%'.$term.'%')->orWhereHas('user',fn ($u) => $u->where('name','like','%'.$term.'%'))))
-            ->when($filters['period_id'] ?? null, fn ($q, $periodId) => $q->where('internship_period_id', $periodId))
+            ->when($periodId, fn ($q, $id) => $q->where('internship_period_id', $id))
             ->when($hasJournalFilter, function ($q) use ($filters) {
                 $q->whereHas('journals', function ($journal) use ($filters) {
                     $journal->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
@@ -46,12 +50,7 @@ class JournalController
             ->paginate(15)
             ->withQueryString();
 
-        $periods = \App\Models\InternshipPeriod::query()
-            ->whereIn('id', Access::placements($request->user())->select('internship_period_id'))
-            ->latest()
-            ->get();
-
-        return view('journals.index', compact('items', 'periods'));
+        return view('journals.index', compact('items', 'periods','periodId'));
     }
 
     public function show(Request $request, Placement $placement)
@@ -110,10 +109,17 @@ class JournalController
             Access::placement($request->user(), (int) $filters['placement_id']);
         }
 
+        $periodId=$filters['period_id']??null;
+        if (!$request->has('period_id') && empty($filters['placement_id'])) {
+            $periods=\App\Models\InternshipPeriod::whereIn('id',Access::placements($request->user())->select('internship_period_id'))
+                ->forSelection()->get();
+            $periodId=\App\Models\InternshipPeriod::defaultFrom($periods)?->id;
+        }
+
         $items = Journal::with(['placement.student.user', 'placement.company', 'attachments', 'industryValidations'])
             ->whereIn('placement_id', Access::placements($request->user())->select('id'))
             ->when($filters['placement_id'] ?? null, fn ($q, $id) => $q->where('placement_id', $id))
-            ->when($filters['period_id'] ?? null, fn ($q, $id) => $q->whereHas('placement', fn ($placement) => $placement->where('internship_period_id', $id)))
+            ->when($periodId, fn ($q, $id) => $q->whereHas('placement', fn ($placement) => $placement->where('internship_period_id', $id)))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($filters['q'] ?? null, fn ($q, $term) => $q->whereHas('placement.student', fn ($s) => $s->where('nis','like','%'.$term.'%')->orWhereHas('user',fn ($u) => $u->where('name','like','%'.$term.'%'))))
             ->when($filters['date_from'] ?? null, fn ($q, $date) => $q->whereDate('activity_date', '>=', $date))

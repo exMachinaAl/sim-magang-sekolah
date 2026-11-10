@@ -9,6 +9,12 @@ use Symfony\Component\Process\Process;
 
 class CertificateDocx
 {
+    public static function converterAvailable(): bool
+    {
+        $binary=config('certificate_print.libreoffice');
+        return is_string($binary) && $binary!=='' && is_file($binary) && is_executable($binary);
+    }
+
     public function temporary(callable $callback): mixed
     {
         $root=storage_path('app/private/certificate-render');
@@ -108,7 +114,7 @@ class CertificateDocx
     public function convert(array $files, string $dir): string
     {
         $binary=config('certificate_print.libreoffice');
-        if (!$binary || !is_file($binary)) CertificatePrint::fail('Konversi DOCX belum siap. Administrator perlu memasang LibreOffice dan mengisi CERTIFICATE_LIBREOFFICE; atau gunakan template PDF bawaan. Tidak ada dokumen yang diterbitkan.');
+        if (!self::converterAvailable()) CertificatePrint::fail('Konversi DOCX belum siap. Administrator perlu memasang LibreOffice dan mengisi CERTIFICATE_LIBREOFFICE dengan executable yang dapat dijalankan; atau gunakan template PDF bawaan. Tidak ada dokumen yang diterbitkan.');
         // Separate profile per render avoids collisions with another request or the user's open office session.
         $uri='file:///'.str_replace('%3A',':',implode('/',array_map('rawurlencode',explode('/',str_replace('\\','/',$dir.'/profile')))));
         if (DIRECTORY_SEPARATOR==='/') $uri='file://'.str_replace('%2F','/',rawurlencode($dir.'/profile'));

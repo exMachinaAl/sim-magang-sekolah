@@ -21,10 +21,10 @@ class MonitoringController
         ]);
         $q = trim($data['q'] ?? '');
         $major = $data['major'] ?? '';
-        $periodId = $data['period_id'] ?? null;
         $scope = Access::placements($request->user());
         $periods = InternshipPeriod::whereIn('id', (clone $scope)->select('internship_period_id'))
-            ->orderByDesc('academic_year')->get();
+            ->forSelection()->get();
+        $periodId = $request->has('period_id') ? ($data['period_id'] ?? null) : InternshipPeriod::defaultFrom($periods)?->id;
         $majors = InternshipRoster::whereIn('id', (clone $scope)->select('internship_roster_id'))
             ->select('major')->distinct()->orderBy('major')->pluck('major');
         $filtered = (clone $scope)
@@ -39,8 +39,9 @@ class MonitoringController
         if (!is_scalar($selectedId) || !ctype_digit((string) $selectedId)) $selectedId = null;
         $selected = $selectedId ? (clone $scope)->with(['student.user', 'roster', 'period', 'teacher'])
             ->findOrFail($selectedId) : null;
+        $showCandidates=$q!=='' || $major!=='' || ($request->has('period_id') && $periodId) || $selected;
         $candidates = (clone $filtered)->with(['student.user', 'roster', 'period'])
-            ->when($q === '' && $major === '' && !$periodId, fn ($p) => $p->whereRaw('1 = 0'))
+            ->when(!$showCandidates, fn ($p) => $p->whereRaw('1 = 0'))
             ->orderBy('id')->paginate(10, ['*'], 'candidates_page')->withQueryString();
         $items = MonitoringRecord::with(['placement.student.user', 'placement.roster', 'placement.period', 'teacher', 'creator','coordinator','latestUpdate'])
             ->whereIn('placement_id', (clone $filtered)->select('id'))
@@ -49,7 +50,7 @@ class MonitoringController
             ->when($data['category']??null,fn($m,$category)=>$m->where('category',$category))
             ->orderByDesc('visit_date')->orderByDesc('id')->paginate(15)->withQueryString();
 
-        return view('monitoring.index', compact('items', 'candidates', 'selected', 'periods', 'majors', 'q', 'major', 'periodId'));
+        return view('monitoring.index', compact('items', 'candidates', 'selected', 'periods', 'majors', 'q', 'major', 'periodId','showCandidates'));
     }
 
     public function store(Request $request)
