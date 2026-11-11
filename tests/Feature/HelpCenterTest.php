@@ -55,7 +55,7 @@ class HelpCenterTest extends TestCase
 
         $admin = User::where('role', 'admin')->firstOrFail();
         $this->actingAs($admin)->get(route('users.index'))->assertOk()
-            ->assertSee('Akun staf &amp; guru pendamping', false)->assertSee('kata sandi awal minimal 10 karakter');
+            ->assertSee('Akun staf &amp; guru pendamping', false)->assertSee('Arsipkan/Sembunyikan');
     }
 
     public function test_help_center_resolves_specific_routes_before_general_routes_and_has_fallback(): void

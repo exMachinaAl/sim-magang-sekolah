@@ -165,8 +165,8 @@ class HelpCenter
             'users.*' => [
                 'key' => 'pengguna-role',
                 'title' => 'Akun staf & guru pendamping',
-                'summary' => 'Koordinator dapat membuat dan mengelola akun guru pendamping. Admin tetap mengelola seluruh akun staf dan role.',
-                'steps' => ['Cari nama, email, atau NIP agar akun guru tidak ganda.', 'Isi identitas dan kata sandi awal minimal 10 karakter.', 'Setelah akun dibuat, buka Penempatan untuk menghubungkan guru kepada siswa.', 'Nonaktifkan akun yang tidak digunakan; jangan berbagi kata sandi atau memakai akun bersama.'],
+                'summary' => 'Koordinator mengelola akun guru pendamping. Admin mengelola seluruh akun serta arsip tersembunyi tanpa menghapus data historis.',
+                'steps' => ['Cari nama, email, atau NIP agar akun tidak ganda.', 'Nonaktifkan akun untuk menghentikan login sementara.', 'Admin dapat memilih Arsipkan/Sembunyikan agar akun tidak memenuhi daftar utama; data dan relasinya tetap tersimpan.', 'Pulihkan dari Arsip Akun; hasil pemulihan tetap nonaktif sampai diperiksa dan diaktifkan secara terpisah.'],
             ],
             'dashboard' => [
                 'key' => 'dashboard',
@@ -280,6 +280,7 @@ class HelpCenter
                 'items' => [
                     ['question' => 'Apa batas admin dibanding koordinator?', 'answer' => 'Admin mengelola akun, role, status aktif, dan pemeriksaan sistem. Jadwal, penempatan, review, nilai, dan penerbitan sertifikat tetap menjadi proses koordinator.'],
                     ['question' => 'Bagaimana membuat akun staf?', 'answer' => 'Buka Pengguna & Role, cari identitas lebih dahulu, lalu buat akun dengan email/NIP unik dan role minimum yang diperlukan. Jangan memakai satu akun untuk beberapa orang.'],
+                    ['question' => 'Apakah akun lama boleh dihapus?', 'answer' => 'Jangan hapus akun yang pernah dipakai. Gunakan Arsipkan/Sembunyikan: akun otomatis nonaktif dan hilang dari daftar utama, tetapi identitas, relasi, dokumen, serta audit tetap tersimpan. Gunakan Arsip Akun untuk memulihkan; akun hasil pemulihan tetap nonaktif sampai diaktifkan secara terpisah.'],
                     ['question' => 'Apa yang dilakukan ketika pengguna tidak lagi bertugas?', 'answer' => 'Nonaktifkan akunnya agar login ditolak. Jangan menghapus atau mengganti identitas historis yang sudah tercatat pada audit.'],
                     ['question' => 'Bagaimana membantu pengguna yang lupa kata sandi?', 'answer' => 'Verifikasi identitas sesuai prosedur sekolah lalu lakukan mekanisme pemulihan yang disediakan. Jangan meminta pengguna mengirimkan kata sandi lama melalui chat.'],
                 ],
