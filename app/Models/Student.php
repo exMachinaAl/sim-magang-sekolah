@@ -7,4 +7,5 @@ class Student extends Model {
  public function user(){return $this->belongsTo(User::class);}
  public function placements(){return $this->hasMany(Placement::class);}
  public function rosters(){return $this->hasMany(InternshipRoster::class);}
+ public function latestRoster(){return $this->hasOne(InternshipRoster::class)->ofMany('academic_year','max');}
 }

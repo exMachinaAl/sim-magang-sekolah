@@ -76,4 +76,34 @@ class UserArchiveTest extends TestCase
         $this->put(route('users.restore',$teacher))->assertForbidden();
         $this->assertFalse($teacher->fresh()->isArchived());
     }
+
+    public function test_admin_can_apply_account_actions_with_checkboxes_atomically(): void
+    {
+        $this->seed();
+        $admin=User::where('role','admin')->firstOrFail();
+        $teachers=User::where('role','guru')->take(2)->get();
+        $ids=$teachers->modelKeys();
+
+        $this->actingAs($admin)->get(route('users.index'))->assertOk()
+            ->assertSee('id="user-bulk-form"',false)->assertSee('name="user_ids[]"',false)
+            ->assertSee('Arsipkan / Sembunyikan');
+        $this->put(route('users.bulk'),['action'=>'deactivate','user_ids'=>$ids])->assertSessionHasNoErrors();
+        $this->assertSame(0,User::whereIn('id',$ids)->where('is_active',true)->count());
+        $this->assertSame(2,\App\Models\AuditLog::where('action','user.bulk_deactivate')->count());
+
+        $this->put(route('users.bulk'),['action'=>'activate','user_ids'=>$ids])->assertSessionHasNoErrors();
+        $this->assertSame(2,User::whereIn('id',$ids)->where('is_active',true)->count());
+        $this->put(route('users.bulk'),['action'=>'archive','user_ids'=>$ids])->assertSessionHasNoErrors();
+        $this->assertSame(2,User::whereIn('id',$ids)->whereNotNull('archived_at')->where('is_active',false)->count());
+
+        $this->get(route('users.index',['view'=>'archived']))->assertOk()
+            ->assertSee('Pulihkan sebagai nonaktif')->assertSee('name="user_ids[]"',false);
+        $this->put(route('users.bulk'),['action'=>'restore','user_ids'=>$ids])->assertSessionHasNoErrors();
+        $this->assertSame(2,User::whereIn('id',$ids)->whereNull('archived_at')->where('is_active',false)->count());
+
+        $this->put(route('users.bulk'),['action'=>'activate','user_ids'=>[$admin->id,$ids[0]]])->assertSessionHasErrors('user_ids');
+        $this->assertFalse(User::findOrFail($ids[0])->is_active);
+        $coordinator=User::where('role','koordinator')->firstOrFail();
+        $this->actingAs($coordinator)->put(route('users.bulk'),['action'=>'activate','user_ids'=>[$ids[0]]])->assertForbidden();
+    }
 }

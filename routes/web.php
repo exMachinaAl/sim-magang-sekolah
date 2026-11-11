@@ -103,6 +103,7 @@ Route::middleware(['auth','active'])->group(function(){
   Route::put('pengguna/{user}/status',[UserController::class,'toggle'])->name('users.toggle');
  });
  Route::middleware('role:admin')->group(function(){
+  Route::put('pengguna/aksi-massal',[UserController::class,'bulk'])->name('users.bulk');
   Route::put('pengguna/{user}/arsip',[UserController::class,'archive'])->name('users.archive');
   Route::put('pengguna/{user}/pulihkan',[UserController::class,'restore'])->name('users.restore');
  });

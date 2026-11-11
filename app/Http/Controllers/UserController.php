@@ -5,6 +5,7 @@ use App\Support\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 class UserController {
  public function index(Request $r){
   $filters=$r->validate(['q'=>'nullable|string|max:100','view'=>['nullable',Rule::in(['available','archived'])]]);
@@ -62,6 +63,40 @@ class UserController {
    Audit::record('user.restored',$locked,['archive'=>$archive,'is_active'=>false]);
   });
   return redirect()->route('users.index')->with('success','Akun dipulihkan ke daftar utama dalam keadaan nonaktif. Periksa identitas lalu aktifkan secara terpisah bila akun boleh login kembali.');
+ }
+ public function bulk(Request $request){
+  abort_unless($request->user()->isRole('admin'),403);
+  $data=$request->validate([
+   'user_ids'=>'required|array|min:1|max:200','user_ids.*'=>'required|integer|distinct|exists:users,id',
+   'action'=>['required',Rule::in(['activate','deactivate','archive','restore'])],
+  ]);
+  $count=DB::transaction(function()use($request,$data):int{
+   $users=User::whereIn('id',$data['user_ids'])->orderBy('id')->lockForUpdate()->get();
+   if($users->count()!==count($data['user_ids'])) throw ValidationException::withMessages(['user_ids'=>'Pilihan akun berubah. Muat ulang daftar sebelum menjalankan aksi massal.']);
+   if($users->contains(fn(User $user)=>$user->id===$request->user()->id)) throw ValidationException::withMessages(['user_ids'=>'Akun Anda sendiri tidak boleh masuk aksi massal.']);
+   foreach($users as $user){
+    $invalid=match($data['action']){
+     'archive'=>$user->isArchived(),
+     'restore'=>!$user->isArchived(),
+     'activate','deactivate'=>$user->isArchived()||str_starts_with($user->role,'legacy_'),
+    };
+    if($invalid) throw ValidationException::withMessages(['user_ids'=>'Akun '.$user->name.' tidak kompatibel dengan aksi '.str_replace('_',' ',$data['action']).'. Tidak ada akun yang diubah.']);
+   }
+   foreach($users as $user){
+    $before=['is_active'=>$user->is_active,'archived_at'=>$user->archived_at?->toIso8601String()];
+    match($data['action']){
+     'activate'=>$user->update(['is_active'=>true]),
+     'deactivate'=>$user->update(['is_active'=>false]),
+     'archive'=>$user->update(['is_active'=>false,'archived_at'=>now(),'archived_by'=>$request->user()->id]),
+     'restore'=>$user->update(['is_active'=>false,'archived_at'=>null,'archived_by'=>null]),
+    };
+    Audit::record('user.bulk_'.$data['action'],$user,['before'=>$before,'after'=>['is_active'=>$user->is_active,'archived_at'=>$user->archived_at?->toIso8601String()]]);
+   }
+   return $users->count();
+  });
+  $labels=['activate'=>'diaktifkan','deactivate'=>'dinonaktifkan','archive'=>'diarsipkan dan disembunyikan','restore'=>'dipulihkan dalam status nonaktif'];
+  $target=$data['action']==='restore'?route('users.index'):($data['action']==='archive'?route('users.index'):url()->previous());
+  return redirect($target)->with('success',$count.' akun berhasil '.$labels[$data['action']].'.');
  }
  private function ensureManageable(Request $request,User $user):void {
   abort_if($request->user()->isRole('koordinator') && $user->role!=='guru',403,'Koordinator hanya dapat mengelola akun guru pendamping.');

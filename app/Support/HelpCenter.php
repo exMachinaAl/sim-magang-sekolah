@@ -130,7 +130,7 @@ class HelpCenter
                 'key' => 'data-siswa',
                 'title' => 'Data siswa',
                 'summary' => 'Kelola identitas master siswa dan impor batch. Akun siswa memakai NIS sebagai login dan tanggal lahir sebagai kata sandi awal.',
-                'steps' => ['Cari siswa berdasarkan nama/NIS atau buka card jurusan.', 'Gunakan template XLSX contoh agar tanggal tetap YYYY-MM-DD dan NIS tetap berupa teks; CSV lama tetap dapat diimpor.', 'Periksa tanggal lahir dan benturan NIS sebelum membuat akun. Data historis roster tidak boleh ditimpa sembarangan.'],
+                'steps' => ['Pilih periode; default mengikuti tag aktif terbaru, sedangkan Semua Periode menampilkan setiap akun siswa satu kali beserta riwayatnya.', 'Cari siswa berdasarkan nama/NIS.', 'Gunakan template XLSX contoh agar tanggal tetap YYYY-MM-DD dan NIS tetap berupa teks; CSV lama tetap dapat diimpor.', 'Edit master memperbarui profil dan roster terbaru, bukan kelas/jurusan pada arsip periode lama.'],
             ],
             'internships.*' => [
                 'key' => 'kontrol-pkl',
@@ -166,7 +166,7 @@ class HelpCenter
                 'key' => 'pengguna-role',
                 'title' => 'Akun staf & guru pendamping',
                 'summary' => 'Koordinator mengelola akun guru pendamping. Admin mengelola seluruh akun serta arsip tersembunyi tanpa menghapus data historis.',
-                'steps' => ['Cari nama, email, atau NIP agar akun tidak ganda.', 'Nonaktifkan akun untuk menghentikan login sementara.', 'Admin dapat memilih Arsipkan/Sembunyikan agar akun tidak memenuhi daftar utama; data dan relasinya tetap tersimpan.', 'Pulihkan dari Arsip Akun; hasil pemulihan tetap nonaktif sampai diperiksa dan diaktifkan secara terpisah.'],
+                'steps' => ['Cari nama, email, atau NIP agar akun tidak ganda.', 'Admin dapat mencentang beberapa akun pada halaman dan memilih Aktifkan, Nonaktifkan, Arsipkan, atau Pulihkan.', 'Arsipkan/Sembunyikan mengeluarkan akun dari daftar utama tanpa menghapus data dan relasi.', 'Pulihkan dari Arsip Akun; hasil pemulihan tetap nonaktif sampai diperiksa dan diaktifkan secara terpisah.'],
             ],
             'dashboard' => [
                 'key' => 'dashboard',

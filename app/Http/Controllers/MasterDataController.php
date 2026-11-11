@@ -7,11 +7,34 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 class MasterDataController {
  public function students(Request $r){
-  $r->validate(['academic_year'=>['nullable','regex:/^\d{4}\/\d{4}$/'],'q'=>'nullable|string|max:100']);
-  $academicYear=$r->academic_year ?: (InternshipPeriod::defaultAcademicYear() ?? '');
+  $filters=$r->validate(['academic_year'=>['nullable','regex:/^\d{4}\/\d{4}$/'],
+   'period_id'=>['nullable','regex:/^(all|[1-9][0-9]*)$/'],'q'=>'nullable|string|max:100']);
+  $periods=InternshipPeriod::forSelection()->get();
+  $selectedPeriod=null;$showAllPeriods=false;
+  if (($filters['period_id']??null)==='all') {
+   $showAllPeriods=true;
+  } elseif (!empty($filters['period_id'])) {
+   $selectedPeriod=$periods->firstWhere('id',(int)$filters['period_id']);
+   abort_unless($selectedPeriod,404,'Periode tidak ditemukan.');
+  } elseif (!empty($filters['academic_year'])) {
+   $selectedPeriod=$periods->firstWhere('academic_year',$filters['academic_year']);
+   abort_unless($selectedPeriod,404,'Periode tidak ditemukan.');
+  } else {
+   $selectedPeriod=InternshipPeriod::defaultFrom($periods);
+   $showAllPeriods=$selectedPeriod===null;
+  }
+  $periodSelection=$showAllPeriods?'all':(string)$selectedPeriod?->id;
+  $academicYear=$selectedPeriod?->academic_year ?: (InternshipPeriod::defaultAcademicYear() ?? '');
   $majors=collect(InternshipRoster::officialMajors());
-  $items=Student::with(['user','rosters'=>fn($q)=>$q->orderByDesc('academic_year')])->when($r->q,fn($q)=>$q->where('nis','like','%'.$r->q.'%')->orWhereHas('user',fn($q)=>$q->where('name','like','%'.$r->q.'%')))->latest()->paginate(15)->withQueryString();
-  return view('masters.students',compact('items','majors','academicYear'));
+  $items=Student::with(['user','latestRoster','rosters'=>fn($q)=>$q
+    ->when($selectedPeriod,fn($rosters)=>$rosters->where('internship_period_id',$selectedPeriod->id))
+    ->orderByDesc('academic_year')])
+   ->when($selectedPeriod,fn($q)=>$q->whereHas('rosters',fn($rosters)=>$rosters->where('internship_period_id',$selectedPeriod->id)))
+   ->whereHas('rosters')
+   ->when($r->q,fn($q)=>$q->where(fn($search)=>$search->where('nis','like','%'.$r->q.'%')
+    ->orWhereHas('user',fn($user)=>$user->where('name','like','%'.$r->q.'%'))))
+   ->latest()->paginate(15)->withQueryString();
+  return view('masters.students',compact('items','majors','academicYear','periods','selectedPeriod','showAllPeriods','periodSelection'));
  }
  public function storeStudent(Request $r){
   $d=$r->validate(['name'=>'required|string|max:150','email'=>'nullable|email|unique:users,email',

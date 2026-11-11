@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{InternshipRoster, Student, User};
+use App\Models\{InternshipPeriod, InternshipRoster, Student, User};
 use App\Support\StudentEnrollment;
 use Database\Seeders\StudentPklDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,6 +59,37 @@ class StudentDirectoryTest extends TestCase
             ->assertOk()->assertSee('Arsip Siswa Lama')->assertDontSee('Nama Unik Siswa');
         $this->get(route('internships.index',['batch'=>1,'major'=>'Teknik Komputer dan Jaringan']))
             ->assertOk()->assertSee('name="roster_ids[]"',false)->assertSee('Nama Unik Siswa')->assertDontSee('Arsip Siswa Lama');
+    }
+
+    public function test_student_directory_defaults_to_active_period_and_can_show_archived_or_all_periods(): void
+    {
+        $service=app(StudentEnrollment::class);
+        $shared=$service->register($this->data(['nis'=>'PER001','name'=>'Siswa Dua Periode','academic_year'=>'2025/2026','class_name'=>'XI Lama']));
+        $service->register($this->data(['nis'=>'PER001','name'=>'Siswa Dua Periode','academic_year'=>'2026/2027','class_name'=>'XII Baru','major'=>'Desain Komunikasi Visual']));
+        $service->register($this->data(['nis'=>'OLD002','name'=>'Hanya Periode Lama','academic_year'=>'2025/2026']));
+        $service->register($this->data(['nis'=>'NEW003','name'=>'Hanya Periode Aktif','academic_year'=>'2026/2027']));
+        $old=InternshipPeriod::where('academic_year','2025/2026')->firstOrFail();
+        $active=InternshipPeriod::where('academic_year','2026/2027')->firstOrFail();
+        $old->update(['is_active'=>false]);
+
+        $this->actingAs($this->actor())->get(route('students.index'))->assertOk()
+            ->assertViewHas('selectedPeriod',fn($period)=>$period?->id===$active->id)
+            ->assertSee('Siswa Dua Periode')->assertSee('Hanya Periode Aktif')->assertDontSee('Hanya Periode Lama')
+            ->assertSee('XII Baru')->assertDontSee('XI Lama')->assertSee('Semua Periode');
+
+        $this->get(route('students.index',['period_id'=>$old->id]))->assertOk()
+            ->assertViewHas('selectedPeriod',fn($period)=>$period?->id===$old->id)
+            ->assertSee('Siswa Dua Periode')->assertSee('Hanya Periode Lama')->assertDontSee('Hanya Periode Aktif')
+            ->assertSee('<td>XI Lama</td>',false)->assertSee('Roster terbaru yang ikut diperbarui: 2026/2027');
+
+        $all=$this->get(route('students.index',['period_id'=>'all']))->assertOk()
+            ->assertViewHas('showAllPeriods',true)->assertSee('Hanya Periode Lama')->assertSee('Hanya Periode Aktif')
+            ->assertSee('2 periode');
+        $this->assertSame(1,substr_count($all->getContent(),'<strong>Siswa Dua Periode</strong>'));
+
+        $this->get(route('students.index',['academic_year'=>'2025/2026']))->assertOk()
+            ->assertViewHas('selectedPeriod',fn($period)=>$period?->id===$old->id);
+        $this->assertSame(2,$shared->rosters()->count());
     }
 
     public function test_master_student_registration_creates_roster_and_rejects_unknown_major(): void
