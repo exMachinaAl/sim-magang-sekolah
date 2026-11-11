@@ -96,7 +96,7 @@ Route::middleware(['auth','active'])->group(function(){
   Route::get('laporan',[ReportController::class,'index'])->name('reports.index');
   Route::get('laporan/{type}/csv',[ReportController::class,'export'])->name('reports.export');
  });
- Route::middleware('role:admin')->group(function(){
+ Route::middleware('role:admin,koordinator')->group(function(){
   Route::get('pengguna',[UserController::class,'index'])->name('users.index');
   Route::post('pengguna',[UserController::class,'store'])->name('users.store');
   Route::put('pengguna/{user}/identitas',[UserController::class,'identity'])->name('users.identity');

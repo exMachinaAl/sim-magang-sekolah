@@ -523,7 +523,7 @@ class SimmagWorkflowTest extends TestCase
         $this->seed();
         $pages = [
             'admin@simmag.test' => ['dashboard','journals.index','monitoring.index','assessments.index','certificates.index','timeline.index','users.index'],
-            'koordinator@simmag.test' => ['dashboard','journals.index','monitoring.index','assessments.index','certificates.index','timeline.index','placements.index','students.index','internships.index','reports.index'],
+            'koordinator@simmag.test' => ['dashboard','journals.index','monitoring.index','assessments.index','certificates.index','timeline.index','placements.index','students.index','internships.index','reports.index','users.index'],
             'guru@simmag.test' => ['dashboard','journals.index','monitoring.index','assessments.index','certificates.index','timeline.index'],
             'siswa@simmag.test' => ['dashboard','journals.index','assessments.index','certificates.index','timeline.index'],
         ];

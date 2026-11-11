@@ -21,6 +21,7 @@
  <a class="nav-link {{ request()->routeIs('students.*')?'active':'' }}" href="{{ route('students.index') }}"><span>♟</span>Data Siswa @include('partials.legacy-badge',['module'=>'students'])</a>
  <a class="nav-link {{ request()->routeIs('internships.*')?'active':'' }}" href="{{ route('internships.index') }}"><span>▦</span>Kontrol PKL</a>
  <a class="nav-link {{ request()->routeIs('placements.*')?'active':'' }}" href="{{ route('placements.index') }}"><span>⇄</span>Penempatan @include('partials.legacy-badge',['module'=>'placements'])</a>
+ <a class="nav-link {{ request()->routeIs('users.*')?'active':'' }}" href="{{ route('users.index') }}"><span>♙</span>Guru Pendamping</a>
  <a class="nav-link {{ request()->routeIs('companies.*')?'active':'' }}" href="{{ route('companies.index') }}"><span>▥</span>Perusahaan</a>
  <a class="nav-link {{ request()->routeIs('periods.*')?'active':'' }}" href="{{ route('periods.index') }}"><span>▦</span>Periode / Tag PKL @include('partials.legacy-badge',['module'=>'periods'])</a>
  <a class="nav-link {{ request()->routeIs('reports.*')?'active':'' }}" href="{{ route('reports.index') }}"><span>↗</span>Laporan & Audit @include('partials.legacy-badge',['module'=>'reports'])</a>

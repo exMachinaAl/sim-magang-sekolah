@@ -27,7 +27,7 @@ class PlacementController
         return view('masters.placements', [
             'items'=>$items,'candidates'=>$candidates,'periods'=>$periods,'period'=>$period,
             'companies'=>Company::orderBy('name')->get(),
-            'teachers'=>User::where('role','guru')->where('is_active',true)->orderBy('name')->get(),
+            'teachers'=>User::where('role','guru')->where('is_active',true)->orderBy('name')->get(['id','name','nip']),
         ]);
     }
 
@@ -75,14 +75,14 @@ class PlacementController
         $data['teacher_id'] ??= null;
         DB::transaction(function () use ($placement,$data) {
             $locked = Placement::whereKey($placement->id)->lockForUpdate()->firstOrFail();
-            $changed = (int)$locked->company_id !== (int)$data['company_id'] || (int)$locked->teacher_id !== (int)$data['teacher_id'];
-            if ($changed && ($locked->journals()->exists() || $locked->assessment()->exists() || $locked->certificate()->exists() || $locked->monitoring()->exists())) {
-                throw ValidationException::withMessages(['company_id'=>'Penempatan sudah memiliki dokumen kegiatan/nilai/sertifikat. Perubahan industri atau pembimbing memerlukan proses koreksi terpisah.']);
+            $companyChanged = (int)$locked->company_id !== (int)$data['company_id'];
+            if ($companyChanged && ($locked->journals()->exists() || $locked->assessment()->exists() || $locked->certificate()->exists() || $locked->monitoring()->exists())) {
+                throw ValidationException::withMessages(['company_id'=>'Penempatan sudah memiliki dokumen kegiatan/nilai/sertifikat. Industri tidak dapat diganti dari formulir ini; gunakan proses koreksi terpisah.']);
             }
             $before = $locked->only(['company_id','teacher_id']);
             $locked->update($data);
             Audit::record('placement.updated',$locked,['before'=>$before,'after'=>$data]);
         });
-        return back()->with('success','Penempatan diperbarui tanpa mengubah jadwal PKL.');
+        return back()->with('success','Industri/guru pendamping diperbarui tanpa mengubah jadwal atau dokumen PKL siswa.');
     }
 }
