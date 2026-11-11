@@ -49,7 +49,7 @@ class HelpCenter
     public function roleIntroduction(User $user): string
     {
         return match ($user->role) {
-            'siswa' => 'Panduan ini memusatkan alur siswa: melihat jadwal, mencatat jurnal, meminta validasi industri, melihat nilai, dan mengunduh sertifikat yang tersedia.',
+            'siswa' => 'Panduan ini memusatkan alur siswa: melihat jadwal, mencatat jurnal, menyetor nilai akhir industri, melihat nilai resmi, dan mengunduh sertifikat yang tersedia.',
             'guru' => 'Panduan ini memusatkan akses guru pembimbing yang bersifat pendampingan kasus dan hanya untuk siswa yang ditugaskan.',
             'koordinator' => 'Panduan ini memusatkan kendali operasional koordinator: data siswa, jadwal PKL, penempatan, review, nilai, sertifikat, kiosk, dan audit.',
             'admin' => 'Panduan ini memusatkan administrasi akun dan pemeriksaan sistem. Perubahan proses bisnis PKL tetap menjadi wewenang koordinator.',
@@ -99,8 +99,8 @@ class HelpCenter
                 'key' => 'sertifikat-detail',
                 'faq_query' => 'terbitkan sertifikat',
                 'title' => 'Detail & arsip sertifikat',
-                'summary' => 'Halaman ini menampilkan versi, persetujuan, arsip PDF/DOCX, dan riwayat distribusi sertifikat.',
-                'steps' => ['Periksa nomor serta versi dokumen.', 'Koordinator menyetujui atau mengajukan revisi berdasarkan sumber yang benar.', 'Catat pergerakan fisik sertifikat secara berurutan sampai diserahkan.'],
+                'summary' => 'Halaman ini memisahkan satu validasi koordinator aktif dari penandatangan, arsip keluaran, dan distribusi sertifikat.',
+                'steps' => ['Periksa ringkasan empat langkah dan nomor versi dokumen.', 'Gunakan panel Validasi koordinator untuk satu keputusan aktif; riwayat lama tersedia dalam bagian lipat.', 'Setelah disetujui, buka keluaran dokumen dan catat distribusi fisik secara berurutan.'],
             ],
             'assessment-templates.*' => [
                 'key' => 'template-penilaian',
@@ -108,11 +108,17 @@ class HelpCenter
                 'summary' => 'Koordinator membuat template aspek yang berasal dari kebutuhan industri/sekolah dan menggunakannya untuk siswa pada jurusan yang sesuai.',
                 'steps' => ['Pilih jurusan dan beri nama versi template.', 'Tandai satu template aktif sebagai default jurusan; template itu dipilih otomatis saat penilaian baru dibuka.', 'Tambahkan aspek angka atau teks beserta bobot dan keterangannya, lalu periksa total bobot. Jangan memakai dropdown nilai siswa.'],
             ],
+            'assessments.student' => [
+                'key' => 'penilaian-siswa',
+                'title' => 'Penilaian per siswa',
+                'summary' => 'Seluruh bukti, nilai resmi, pengesahan, masa selesai PKL, dan kesiapan sertifikat siswa dipusatkan pada halaman ini.',
+                'steps' => ['Periksa alert waktu selesai PKL dan identitas penempatan.', 'Buka setoran/foto siswa, cocokkan dengan sumber, lalu terapkan atau input manual ke nilai resmi.', 'Sahkan nilai setelah bukti sesuai, kemudian lanjutkan ke sertifikat dari bagian terakhir.'],
+            ],
             'assessments.evidence.*' => [
                 'key' => 'bukti-penilaian',
                 'title' => 'Bukti nilai industri',
-                'summary' => 'Bukti disimpan privat sebagai pendukung input nilai dan tidak mengubah PDF sertifikat yang sudah diterbitkan.',
-                'steps' => ['Pastikan bukti berasal dari siswa/industri yang benar.', 'Unggah file dan catatan yang cukup untuk audit.', 'Jangan mengunggah dokumen rahasia yang tidak diperlukan.'],
+                'summary' => 'Bandingkan seluruh informasi nilai dengan dokumen industri, lalu koreksi atau sahkan sebagai koordinator.',
+                'steps' => ['Periksa identitas siswa, aspek, bobot, hasil, dan nilai akhir yang ditampilkan.', 'Bandingkan dengan PDF/foto sumber industri; gunakan tombol koreksi bila isian belum sama.', 'Unggah bukti dan catatan yang cukup untuk audit, lalu sahkan hanya setelah sesuai.'],
             ],
             'monitoring.show' => [
                 'key' => 'monitoring-kasus',
@@ -124,7 +130,7 @@ class HelpCenter
                 'key' => 'data-siswa',
                 'title' => 'Data siswa',
                 'summary' => 'Kelola identitas master siswa dan impor batch. Akun siswa memakai NIS sebagai login dan tanggal lahir sebagai kata sandi awal.',
-                'steps' => ['Cari siswa berdasarkan nama/NIS atau buka card jurusan.', 'Gunakan template CSV contoh untuk impor batch.', 'Periksa tanggal lahir dan benturan NIS sebelum membuat akun. Data historis roster tidak boleh ditimpa sembarangan.'],
+                'steps' => ['Cari siswa berdasarkan nama/NIS atau buka card jurusan.', 'Gunakan template XLSX contoh agar tanggal tetap YYYY-MM-DD dan NIS tetap berupa teks; CSV lama tetap dapat diimpor.', 'Periksa tanggal lahir dan benturan NIS sebelum membuat akun. Data historis roster tidak boleh ditimpa sembarangan.'],
             ],
             'internships.*' => [
                 'key' => 'kontrol-pkl',
@@ -136,7 +142,7 @@ class HelpCenter
                 'key' => 'penempatan',
                 'title' => 'Penempatan siswa',
                 'summary' => 'Hubungkan siswa yang sudah terdaftar pada Kontrol PKL dengan perusahaan dan guru opsional.',
-                'steps' => ['Filter tahun/jurusan atau cari nama/NIS.', 'Centang banyak siswa dan lepaskan siswa yang menjadi pengecualian.', 'Periksa perusahaan, tanggal roster, dan guru bila diperlukan sebelum menyimpan.'],
+                'steps' => ['Filter tahun/jurusan atau cari nama/NIS.', 'Centang banyak siswa dan lepaskan siswa yang menjadi pengecualian.', 'Pilih guru pendamping bila diperlukan; koordinator dapat membuat akun guru melalui menu Guru Pendamping.', 'Guru dapat ditunjuk belakangan tanpa mengubah tanggal atau jurnal siswa.'],
             ],
             'companies.*' => [
                 'key' => 'perusahaan',
@@ -158,9 +164,9 @@ class HelpCenter
             ],
             'users.*' => [
                 'key' => 'pengguna-role',
-                'title' => 'Pengguna & role',
-                'summary' => 'Admin mengelola akun staf, identitas login, role, dan status aktif tanpa mengambil alih proses bisnis PKL.',
-                'steps' => ['Cari pengguna sebelum membuat akun baru.', 'Pilih role dengan prinsip akses minimum.', 'Nonaktifkan akun yang tidak digunakan; jangan berbagi kata sandi atau memakai akun bersama.'],
+                'title' => 'Akun staf & guru pendamping',
+                'summary' => 'Koordinator dapat membuat dan mengelola akun guru pendamping. Admin tetap mengelola seluruh akun staf dan role.',
+                'steps' => ['Cari nama, email, atau NIP agar akun guru tidak ganda.', 'Isi identitas dan kata sandi awal minimal 10 karakter.', 'Setelah akun dibuat, buka Penempatan untuk menghubungkan guru kepada siswa.', 'Nonaktifkan akun yang tidak digunakan; jangan berbagi kata sandi atau memakai akun bersama.'],
             ],
             'dashboard' => [
                 'key' => 'dashboard',
@@ -202,9 +208,9 @@ class HelpCenter
                 'key' => 'penilaian',
                 'title' => 'Penilaian',
                 'summary' => 'Nilai berasal dari industri, dicatat dan disahkan koordinator berdasarkan template jurusan serta bukti yang tersedia.',
-                'steps' => ['Cari siswa menggunakan nama atau NIS.', 'Isi setiap aspek persis sesuai sumber industri; jangan memilih nilai dari daftar siswa massal.', 'Periksa hasil hitung, alasan nilai akhir, bukti, lalu sahkan.'],
+                'steps' => ['Daftar siswa langsung tampil per halaman; gunakan nama/NIS, tahun, atau jurusan untuk mempersempit hasil.', 'Isi setiap aspek persis sesuai sumber industri; jangan memilih nilai dari daftar siswa massal.', 'Periksa hasil hitung, alasan nilai akhir, bukti, lalu sahkan.'],
                 'roles' => [
-                    'siswa' => 'Siswa hanya melihat hasil yang sudah tersedia untuk dirinya.',
+                    'siswa' => 'Siswa dapat menyetor nilai dari lembar industri sesuai kriteria dan foto opsional; setoran belum resmi sampai diterapkan koordinator.',
                     'guru' => 'Guru tidak berwenang memasukkan atau mengesahkan nilai industri.',
                     'koordinator' => 'ID koordinator pencatat dan pengesah disimpan untuk audit.',
                     'admin' => 'Admin memeriksa sistem; pemberian dan input nilai bukan wewenang admin.',
@@ -215,7 +221,7 @@ class HelpCenter
                 'faq_query' => 'sertifikat',
                 'title' => 'Sertifikat',
                 'summary' => 'Sertifikat memakai nilai yang telah disahkan, arsip PDF per versi, persetujuan koordinator, dan riwayat distribusi.',
-                'steps' => ['Cari dengan nama/NIS dan pastikan versi yang dibuka benar.', 'Periksa dua halaman: identitas depan dan daftar nilai belakang.', 'Versi terbit tidak dibangun ulang dari data hidup; koreksi dilakukan melalui revisi resmi.'],
+                'steps' => ['Kandidat langsung tampil per halaman; gunakan nama/NIS dan filter bila perlu, lalu pastikan versi yang dibuka benar.', 'Periksa dua halaman: identitas depan dan daftar nilai belakang.', 'Versi terbit tidak dibangun ulang dari data hidup; koreksi dilakukan melalui revisi resmi.'],
             ],
             'profile*' => [
                 'key' => 'keamanan-akun',
@@ -242,6 +248,7 @@ class HelpCenter
                     ['question' => 'Bagaimana mengetahui apakah saya sedang PKL atau sudah masuk sekolah?', 'answer' => 'Status dihitung otomatis dari tanggal mulai dan selesai pada Kontrol PKL. Bila tanggal tidak sesuai, laporkan kepada koordinator; siswa tidak mengonfirmasi status secara manual.'],
                     ['question' => 'Bagaimana mengisi jurnal?', 'answer' => 'Buka Jurnal & Foto, pilih penempatan, isi tanggal, kegiatan, ruang/jam/peralatan, serta nilai industri bila sudah diberikan. Foto opsional dan tanggal harus berada dalam jadwal PKL.'],
                     ['question' => 'Bagaimana validasi jurnal oleh industri?', 'answer' => 'Tunjukkan ringkasan kepada pembimbing. Setelah isi dan nilai cocok, tampilkan QR jurnal untuk dipindai melalui Portal Kiosk pada perangkat pembimbing yang telah didaftarkan. Pembimbing memeriksa informasi lalu menekan OK; Batal tidak menyimpan validasi. Scan boleh dilakukan pada hari berbeda dan waktu scan tetap tercatat.'],
+                    ['question' => 'Bagaimana menyetor nilai akhir dari industri?', 'answer' => 'Buka Penilaian, salin setiap nilai sesuai kriteria yang tampil, isi nama penilai dan tanggal, lalu lampirkan foto lembar nilai bila ada. Kiriman siswa belum resmi; koordinator akan memeriksa, mengoreksi bila perlu, lalu menerapkannya.'],
                     ['question' => 'Mengapa nilai atau sertifikat belum terlihat?', 'answer' => 'Nilai harus dicatat dan disahkan koordinator terlebih dahulu. Sertifikat juga memerlukan data lengkap, persetujuan, dan proses penerbitan. Hubungi koordinator bila tahap tersebut seharusnya sudah selesai.'],
                 ],
             ],
@@ -260,8 +267,9 @@ class HelpCenter
                 'description' => 'Kontrol utama operasional dan audit PKL.',
                 'items' => [
                     ['question' => 'Apa urutan menyiapkan siswa PKL?', 'answer' => 'Masukkan Data Siswa/roster, buat tag tahun, atur tanggal di Kontrol PKL per jurusan atau siswa, lalu lakukan Penempatan ke perusahaan. Guru bersifat opsional.'],
+                    ['question' => 'Bagaimana membuat dan menugaskan guru pendamping?', 'answer' => 'Buka Guru Pendamping, periksa nama/email/NIP agar tidak ganda, lalu buat akun guru. Setelah berhasil, buka Penempatan dan pilih guru tersebut pada siswa baru atau pada menu Ubah industri / pendamping untuk siswa yang sudah ditempatkan. Penugasan guru tidak mengubah tanggal maupun jurnal siswa.'],
                     ['question' => 'Bagaimana memakai dua akun koordinator?', 'answer' => 'Setiap koordinator harus memakai akunnya sendiri. Sistem menyimpan ID pencatat/pengubah sehingga jangan berbagi akun meskipun wewenangnya sama.'],
-                    ['question' => 'Bagaimana alur nilai sampai sertifikat?', 'answer' => 'Buat template aspek per jurusan, cari siswa dengan nama/NIS, input nilai persis dari industri, unggah bukti bila ada, sahkan nilai, pilih template cetak, pratinjau, ajukan dan setujui sertifikat, lalu catat distribusinya.'],
+                    ['question' => 'Bagaimana alur nilai sampai sertifikat?', 'answer' => 'Buat template aspek per jurusan. Siswa dapat menyetor nilai dan foto dari industri, atau koordinator tetap membaca jurnal fisik. Koordinator memeriksa lalu menerapkan nilai ke form resmi, melampirkan bukti tambahan bila perlu, mengesahkan nilai, memilih desain cetak, memeriksa pratinjau, mengajukan satu validasi sertifikat, lalu mencatat distribusinya.'],
                     ['question' => 'Bagaimana mendaftarkan perangkat pembimbing industri?', 'answer' => 'Buka Jurnal → Pembimbing Industri & Perangkat QR, hubungkan siswa, lalu buat QR pendaftaran sekali pakai. Pembimbing memindainya dengan HP dan browser sendiri hingga Portal Kiosk terbuka. Setelah itu pembimbing dapat memindai banyak QR siswa secara berurutan, memeriksa data, dan memilih OK atau Batal. Cabut perangkat yang hilang atau tidak lagi digunakan.'],
                     ['question' => 'Kapan memakai batch dan kapan per siswa?', 'answer' => 'Gunakan batch ketika tanggal atau penempatan sama untuk banyak siswa/jurusan. Lepaskan centang untuk pengecualian, kemudian koreksi individual hanya pada siswa yang benar-benar berbeda.'],
                 ],
