@@ -15,9 +15,9 @@ class CertificateController {
   $scope=Access::placements($user)->when($search!=='',fn($q)=>$q->whereHas('student',fn($s)=>$s->where('nis','like','%'.$search.'%')->orWhereHas('user',fn($u)=>$u->where('name','like','%'.$search.'%'))))
    ->when($periodId,fn($q,$id)=>$q->where('internship_period_id',$id))
    ->when($filters['major']??null,fn($q,$major)=>$q->whereHas('roster',fn($r)=>$r->where('major',$major)));
-  $items=Access::certificates($user)->whereIn('placement_id',(clone $scope)->select('id'))->with(['placement.student.user','placement.company','placement.period','approvals'])
+  $items=Access::certificates($user)->whereIn('placement_id',(clone $scope)->select('id'))->with(['placement.student.user','placement.company','placement.period','approvals.approver'])
    ->when($filters['status']??null,fn($q,$status)=>$q->where('status',$status))->latest()->paginate(15)->withQueryString();
-  $placements=$user->isRole('koordinator') && $search!==''?(clone $scope)
+  $placements=$user->isRole('koordinator')?(clone $scope)
    ->doesntHave('certificate')->with(['student.user','assessment','roster','period','company'])->latest()->paginate(10,['*'],'candidates_page')->withQueryString():collect();
   $demoCertificate=null;
   if(app()->environment(['local','testing']) && $user->isRole('koordinator')) {
@@ -61,7 +61,7 @@ class CertificateController {
   return back()->with('success','Sertifikat dibuat dan dikirim untuk persetujuan.');
  }
  public function show(Request $r,Certificate $certificate){
-  $certificate=Access::certificates($r->user())->with(['placement.student.user','placement.company','placement.period','approvals','approvalEvents.approver','movements.actor',
+  $certificate=Access::certificates($r->user())->with(['placement.student.user','placement.company','placement.period','approvals.approver','approvalEvents.approver','movements.actor',
    'documents'=>fn($q)=>$q->select('id','certificate_id','version','snapshot','source','note','sha256','print_pdf_sha256','issued_at','created_at','front_hash','back_hash')
     ->with('wordExport:id,certificate_document_id,front_hash,back_hash,layout,created_at')])->findOrFail($certificate->id);
   $document=$certificate->documents->firstWhere('version',$certificate->version);

@@ -29,14 +29,16 @@ class AssessmentAuditFixTest extends TestCase
         $this->get(route('assessments.index',$query))->assertOk()->assertSee($major)->assertSee($p->roster->class_name)
             ->assertDontSee('PROFIL TERKINI BERBEDA')->assertDontSee('KELAS TERKINI')
             ->assertViewHas('placements',fn($rows)=>$rows->total()===1)->assertViewHas('items',fn($rows)=>$rows->total()===1);
-        $this->get(route('assessments.index',['placement_id'=>$p->id]))->assertOk()->assertSee($major)->assertDontSee('PROFIL TERKINI BERBEDA');
+        $this->get(route('assessments.student',$p))->assertOk()->assertSee($major)->assertDontSee('PROFIL TERKINI BERBEDA');
         $this->get(route('assessments.index',['q'=>$p->student->user->name]))->assertOk()->assertViewHas('items',fn($rows)=>$rows->contains('id',$a->id));
         foreach ([['major'=>'Bukan Jurusan'],['period_id'=>99999],['q'=>'NIS tidak ditemukan']] as $filter) {
             $this->get(route('assessments.index',array_replace($query,$filter)))->assertOk()
                 ->assertViewHas('placements',fn($rows)=>$rows->total()===0)->assertViewHas('items',fn($rows)=>$rows->total()===0);
         }
-        $this->get(route('assessments.evidence.index',$a))->assertOk()->assertSee($major)->assertDontSee('PROFIL TERKINI BERBEDA');
-        $this->get(route('assessments.index'))->assertOk()->assertViewHas('placements',fn($rows)=>$rows->isEmpty());
+        $this->get(route('assessments.evidence.index',$a))->assertOk()->assertSee($major)
+            ->assertSee('Informasi penilaian yang dicatat dari industri')->assertSee('Nilai resmi')
+            ->assertDontSee('PROFIL TERKINI BERBEDA');
+        $this->get(route('assessments.index'))->assertOk()->assertViewHas('placements',fn($rows)=>$rows->total()>0 && $rows->perPage()===10);
         $this->getJson(route('assessments.index',['q'=>['bad']]))->assertUnprocessable();
         $this->getJson(route('assessments.index',['page'=>-1]))->assertUnprocessable();
     }

@@ -6,7 +6,7 @@ Tahap P0 — 24 Oktober 2026. Perbaikan mengikuti flag integritas dokumen, sambi
 
 ## Perubahan alur
 
-1. Koordinator mencari nama/NIS di Sertifikat; tersedia filter tag tahun dan jurusan roster. Kandidat tidak dimuat sebelum pencarian dan dipaginasi sepuluh hasil. Rekap sertifikat dipaginasi lima belas hasil. Tidak ada dropdown seluruh siswa.
+1. Koordinator membuka Sertifikat dan kandidat langsung tampil maksimal sepuluh per halaman. Nama/NIS, tag tahun, serta jurusan roster tetap tersedia untuk mempersempit hasil. Rekap sertifikat dipaginasi lima belas hasil. Tidak ada dropdown seluruh siswa.
 2. Saat pengajuan, sistem mengecek identitas, kecocokan roster/penempatan, tanggal berurutan, keikutsertaan PKL, nilai disahkan, kelengkapan ketentuan, dan hasil PDF tepat dua halaman. Kegagalan membatalkan seluruh pengajuan dalam transaksi.
 3. Proposal menyimpan snapshot identitas/tanggal/nilai, HTML yang sudah dirender, PDF utuh, SHA-256, versi, dan ID koordinator. Kelas/jurusan berasal dari roster tahun penempatan, bukan profil terkini.
 4. Sebelum menyetujui, sistem memeriksa ulang kesiapan dan mencocokkan sumber dengan proposal. Jika berubah, koordinator harus memeriksa lalu membuat versi baru; tidak menyetujui data berbeda lewat tab lama.

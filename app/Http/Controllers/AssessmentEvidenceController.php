@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Assessment, AssessmentEvidence, Placement};
+use App\Models\{Assessment, AssessmentEvidence, AssessmentSubmission, Placement};
 use App\Support\{Access, Audit};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,10 +12,15 @@ class AssessmentEvidenceController
     public function index(Request $request,Assessment $assessment)
     {
         Access::placement($request->user(),$assessment->placement_id);
-        $assessment->load(['placement.student.user','placement.roster','placement.period']);
+        $assessment->load([
+            'placement.student.user','placement.roster','placement.period','placement.company',
+            'assessor','approver','scores.criterion',
+        ]);
         $items=$assessment->evidence()->select('id','assessment_id','uploaded_by','assessment_revision','assessment_status','original_name','mime','size','sha256','note','created_at')
             ->with('uploader')->latest('id')->paginate(10);
-        return view('assessments.evidence',compact('assessment','items'));
+        $studentSubmissions=AssessmentSubmission::withoutPhotoData()->where('placement_id',$assessment->placement_id)
+            ->where('status','applied')->with(['submitter','applier'])->latest('applied_at')->get();
+        return view('assessments.evidence',compact('assessment','items','studentSubmissions'));
     }
     public function store(Request $request,Assessment $assessment)
     {
@@ -36,7 +41,7 @@ class AssessmentEvidenceController
                 'sha256'=>hash('sha256',$bytes),'file_base64'=>base64_encode($bytes),'note'=>$data['note']]);
             Audit::record('assessment.evidence_added',$evidence,['assessment_id'=>$current->id,'revision'=>$current->revision,'sha256'=>$evidence->sha256]);
         });
-        return redirect()->route('assessments.evidence.index',$assessment)->with('success','Bukti industri tersimpan. Nilai, status pengesahan, dan sertifikat tidak diubah.');
+        return redirect()->route('assessments.student',$assessment->placement_id)->with('success','Bukti industri tersimpan. Nilai, status pengesahan, dan sertifikat tidak diubah.');
     }
     public function download(Request $request,AssessmentEvidence $evidence)
     {

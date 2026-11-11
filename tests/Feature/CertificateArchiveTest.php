@@ -74,6 +74,9 @@ class CertificateArchiveTest extends TestCase
     public function test_approval_rechecks_sources_and_requires_new_version_for_changes(): void
     {
         $c=Certificate::where('status','awaiting_approval')->firstOrFail();
+        $page=$this->get(route('certificates.show',$c))->assertOk()->assertSee('Satu keputusan aktif')
+            ->assertSee('Setujui versi 1')->assertSee('Alur sertifikat versi 1');
+        $this->assertSame(1,substr_count($page->getContent(),'data-certificate-approval-panel'));
         $original=$c->documents()->firstOrFail()->snapshot;
         $c->placement->company->update(['name'=>'Perusahaan dikoreksi']);
         $this->put(route('certificates.approve',$c),['decision'=>'approved','version'=>1])->assertSessionHasErrors('certificate');
@@ -144,9 +147,11 @@ class CertificateArchiveTest extends TestCase
     public function test_permissions_and_search_are_scoped_without_student_dropdown(): void
     {
         $p=$this->candidate();
-        $this->get(route('certificates.index'))->assertOk()->assertViewHas('placements',fn($rows)=>$rows->isEmpty())->assertDontSee('<select name="placement_id"',false);
+        $this->get(route('certificates.index'))->assertOk()->assertSee($p->student->user->name)
+            ->assertViewHas('placements',fn($rows)=>$rows->contains('id',$p->id) && $rows->perPage()===10)
+            ->assertDontSee('<select name="placement_id"',false);
         $this->get(route('certificates.index',['q'=>$p->student->nis,'period_id'=>$p->internship_period_id,'major'=>$p->roster->major]))
-            ->assertOk()->assertSee($p->student->user->name)->assertSee('Lengkapi &amp; Ajukan Sertifikat',false);
+            ->assertOk()->assertSee($p->student->user->name)->assertSee('Siapkan Sertifikat');
         $c=Certificate::where('status','awaiting_print')->firstOrFail();
         $other=User::where('role','siswa')->where('id','!=',$c->placement->student->user_id)->firstOrFail();
         $this->actingAs($other)->get(route('certificates.pdf',$c))->assertNotFound();

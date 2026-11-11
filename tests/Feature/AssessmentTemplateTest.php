@@ -44,12 +44,14 @@ class AssessmentTemplateTest extends TestCase
             'values'=>['field_1'=>90,'field_2'=>80,'field_3'=>'Switch dan router'], 'final_score'=>88];
     }
 
-    public function test_assessment_uses_name_or_nis_search_instead_of_student_dropdown(): void
+    public function test_assessment_shows_paginated_students_directly_and_keeps_advanced_search(): void
     {
         $placement = $this->placement();
         $placement->student->user->update(['name'=>'Nama Siswa Dicari']);
         $this->actingAs($this->actor('koordinator'))->get(route('assessments.index'))
-            ->assertOk()->assertDontSee('name="placement_id"', false)->assertDontSee('Nama Siswa Dicari');
+            ->assertOk()->assertSee('Nama Siswa Dicari')->assertSee('001/22.33')->assertSee('Buka Penilaian')
+            ->assertDontSee('<select name="placement_id"', false)
+            ->assertViewHas('placements', fn ($rows) => $rows->total() === 1 && $rows->perPage() === 10);
         foreach (['001/22.33', 'Nama Siswa'] as $search) {
             $this->get(route('assessments.index', ['q'=>$search]))->assertOk()->assertSee('Nama Siswa Dicari')
                 ->assertSee('001/22.33')->assertSee('Industri Jaringan')->assertSee('Buka Penilaian')
@@ -67,12 +69,15 @@ class AssessmentTemplateTest extends TestCase
         $template=AssessmentTemplate::firstOrFail();
         $placement=$this->placement();
         $this->get(route('assessment-templates.index'))->assertOk()->assertSee('Melakukan crimping');
-        $this->get(route('assessments.index',['placement_id'=>$placement->id,'template_id'=>$template->id]))->assertOk()->assertSee('Jenis perangkat');
+        $this->get(route('assessments.student',[$placement,'template_id'=>$template->id]))->assertOk()->assertSee('Jenis perangkat');
         $this->post(route('assessments.store'),$this->input($placement,$template))->assertSessionHasNoErrors()->assertRedirect();
         $assessment=Assessment::firstOrFail();
         $this->assertSame($coordinator->id,$assessment->assessor_id);
         $this->assertSame('88.00',$assessment->calculated_score);
         $this->assertSame('Switch dan router',$assessment->field_values['field_3']);
+        $this->get(route('assessments.evidence.index',$assessment))->assertOk()
+            ->assertSee('Informasi penilaian yang dicatat dari industri')->assertSee('Instalasi jaringan')
+            ->assertSee('Switch dan router')->assertSee('Sahkan setelah bukti diperiksa');
         $this->put(route('assessments.approve',$assessment),['decision'=>'approved','revision'=>$assessment->revision])->assertRedirect();
         $this->post(route('assessments.store'),array_replace($this->input($placement,$template),['revision'=>2]))->assertForbidden();
 
@@ -144,7 +149,7 @@ class AssessmentTemplateTest extends TestCase
         $this->assertSame($preferredTemplate->id, AssessmentTemplateDefault::where('major', $first['major'])->value('assessment_template_id'));
 
         $placement = $this->placement();
-        $this->get(route('assessments.index', ['placement_id' => $placement->id]))->assertOk()
+        $this->get(route('assessments.student', $placement))->assertOk()
             ->assertSee('TKJ default baru')->assertSee('Default jurusan')->assertSee('dipilih otomatis');
 
         $this->put(route('assessment-templates.toggle', $preferredTemplate), ['is_active' => 0])->assertSessionHasNoErrors();

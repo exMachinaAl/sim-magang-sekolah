@@ -12,7 +12,7 @@ Tahap ini hanya menutup tiga temuan audit: identitas historis, bukti sumber indu
 ## Perilaku yang diperbaiki
 
 - Label kelas/jurusan pada kandidat, penilaian terpilih, rekap, dan bukti memakai roster tahun penempatan. Profil terbaru tidak digunakan sebagai pengganti sejarah. Roster kosong ditandai **Roster belum terhubung**; penilaian baru tidak boleh menebak jurusan dari profil jika relasi roster belum benar.
-- Nama/NIS, tahun ajaran, serta jurusan berlaku pada kandidat dan rekap. Siswa tetap dicari, bukan dropdown seluruh siswa. Kandidat baru dimuat setelah pencarian nama/NIS; rekap bisa disaring tahun/jurusan tanpa nama.
+- Nama/NIS, tahun ajaran, serta jurusan berlaku pada kandidat dan rekap. Kandidat langsung tampil maksimal sepuluh per halaman, tanpa dropdown seluruh siswa; pencarian dan filter mempersempit hasil.
 - Scope guru/siswa dipertahankan sebelum kondisi pencarian. Siswa hanya melihat nilai miliknya yang telah disahkan; guru hanya siswa bimbingannya.
 - Daftar kandidat dan rekap menggunakan paginasi SQL terpisah dengan filter tetap terbawa. Lampiran dipaginasi sepuluh per halaman tanpa memuat isi file pada daftar.
 

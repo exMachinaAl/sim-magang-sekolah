@@ -21,6 +21,7 @@ class Placement extends Model {
  public function teacher(){return $this->belongsTo(User::class,'teacher_id');}
  public function journals(){return $this->hasMany(Journal::class);}
  public function assessment(){return $this->hasOne(Assessment::class);}
+ public function assessmentSubmissions(){return $this->hasMany(AssessmentSubmission::class);}
  public function certificate(){return $this->hasOne(Certificate::class);}
  public function monitoring(){return $this->hasMany(MonitoringRecord::class);}
  public function timelineCompletions(){return $this->hasMany(TimelineEventCompletion::class);}

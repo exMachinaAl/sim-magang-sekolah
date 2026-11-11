@@ -80,7 +80,9 @@ class CertificatePrintTest extends TestCase
             $pdf=$this->get(route('certificates.pdf',$certificate))->assertOk()->getContent();
             $firstPDF??=$pdf;
             $this->assertSame($firstPDF,$this->get(route('certificates.pdf',[$certificate,'version'=>1]))->assertOk()->getContent());
-            $this->get(route('certificates.show',$certificate))->assertOk()->assertSee('Format dokumen versi ini');
+            $this->get(route('certificates.show',$certificate))->assertOk()
+                ->assertSee('Alur sertifikat versi')->assertSee('Validasi koordinator')
+                ->assertSee('Format, penandatangan, dan keluaran dokumen');
         }
         $this->assertSame('85.00',$this->placement->assessment->fresh()->final_score);
         $this->assertSame(4,$certificate->documents()->count());

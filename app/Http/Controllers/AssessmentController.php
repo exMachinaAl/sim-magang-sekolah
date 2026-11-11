@@ -2,21 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Assessment, AssessmentTemplate, AssessmentTemplateDefault, InternshipPeriod, InternshipRoster, Placement};
-use App\Support\{Access, Audit};
+use App\Models\{Assessment, AssessmentSubmission, AssessmentTemplate, AssessmentTemplateDefault, InternshipPeriod, InternshipRoster, Placement};
+use App\Support\{Access, AssessmentSubmissionSource, Audit};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AssessmentController
 {
-    public function index(Request $request)
+    public function index(Request $request, AssessmentSubmissionSource $submissionSource)
     {
         $filters=$request->validate(['q'=>['nullable','string','max:100'], 'period_id'=>'nullable|integer|min:1',
             'major'=>'nullable|string|max:150','placement_id'=>'nullable|integer|min:1','template_id'=>'nullable|integer|min:1',
-            'page'=>'nullable|integer|min:1','search_page'=>'nullable|integer|min:1']);
+            'submission_id'=>'nullable|integer|min:1','page'=>'nullable|integer|min:1','search_page'=>'nullable|integer|min:1',
+            'submission_page'=>'nullable|integer|min:1']);
         $search = trim((string) $request->input('q', ''));
         $user = $request->user();
+        if ($user->isRole('koordinator') && ! empty($filters['placement_id'])) {
+            Access::placement($user, (int) $filters['placement_id']);
+            return redirect()->route('assessments.student', array_filter([
+                'placement'=>$filters['placement_id'], 'template_id'=>$filters['template_id'] ?? null,
+                'submission_id'=>$filters['submission_id'] ?? null,
+            ]));
+        }
         $base=Access::placements($user);
         $periods=InternshipPeriod::whereIn('id',(clone $base)->select('internship_period_id'))->forSelection()->get();
         $periodId=$request->has('period_id')?($filters['period_id']??null):InternshipPeriod::defaultFrom($periods)?->id;
@@ -30,35 +38,83 @@ class AssessmentController
             ->withCount('evidence')->whereIn('placement_id',(clone $scope)->select('id'))
             ->when($user->isRole('siswa'), fn ($q) => $q->where('status', 'approved'))
             ->latest('id')->paginate(15)->withQueryString();
-        $placements = $user->isRole('koordinator') && $search !== ''
-            ? (clone $scope)->with(['student.user', 'period', 'company','roster'])
+        $placements = $user->isRole('koordinator')
+            ? (clone $scope)->with(['student.user', 'period', 'company','roster','assessment','certificate'])
+                ->withCount(['assessmentSubmissions as pending_submission_count'=>fn($q)=>$q->where('status','submitted')])
                 ->latest()->paginate(10, ['*'], 'search_page')->withQueryString() : collect();
-        $selectedPlacement = null;
-        $selectedTemplate = null;
-        $defaultTemplateId = null;
-        $assessment = null;
-        $templates = collect();
-        if ($user->isRole('koordinator') && $request->integer('placement_id')) {
-            $selectedPlacement = Access::placement($user, $request->integer('placement_id'));
-            $selectedPlacement->load(['student.user', 'company', 'assessment','roster','period']);
-            $assessment = $selectedPlacement->assessment;
-            $defaultTemplateId = $selectedPlacement->roster
-                ? AssessmentTemplateDefault::where('major', $selectedPlacement->roster->major)->value('assessment_template_id')
-                : null;
-            $templates = $selectedPlacement->roster
-                ? AssessmentTemplate::where('major', $selectedPlacement->roster->major)->where('is_active', true)
-                    ->when($defaultTemplateId, fn ($query, $id) => $query->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$id]))
-                    ->latest('id')->get()
-                : collect();
-            if ($request->integer('template_id')) {
-                $selectedTemplate = $templates->firstWhere('id', $request->integer('template_id'));
-                abort_unless($selectedTemplate, 422, 'Template tidak sesuai jurusan atau sudah dinonaktifkan.');
-            } elseif (! $assessment) {
-                $selectedTemplate = $templates->firstWhere('id', $defaultTemplateId) ?? $templates->first();
+        $submissions = $user->isRole('koordinator')
+            ? AssessmentSubmission::withoutPhotoData()->whereIn('placement_id', (clone $scope)->select('id'))->where('status','submitted')
+                ->with(['placement.student.user','placement.roster','placement.period','placement.company','placement.assessment','submitter'])
+                ->latest('id')->paginate(10, ['*'], 'submission_page')->withQueryString() : collect();
+        $studentSubmissionPlacements = collect();
+        $studentSubmissionSources = [];
+        $studentLatestSubmissions = collect();
+        if ($user->isRole('siswa')) {
+            $studentSubmissionPlacements = (clone $scope)->with(['student.user','period','company','roster','assessment'])->latest('id')->get();
+            foreach ($studentSubmissionPlacements as $placement) {
+                $studentSubmissionSources[$placement->id] = $submissionSource->for($placement);
             }
+            $studentLatestSubmissions = AssessmentSubmission::withoutPhotoData()->whereIn('placement_id', $studentSubmissionPlacements->pluck('id'))
+                ->latest('id')->get()->unique('placement_id')->keyBy('placement_id');
         }
-        $snapshot = $assessment?->template_snapshot ?: $selectedTemplate?->snapshot();
-        return view('assessments.index', compact('items', 'placements', 'selectedPlacement', 'selectedTemplate', 'defaultTemplateId', 'assessment', 'templates', 'snapshot', 'search','periods','periodId','majors'));
+        return view('assessments.index', compact('items', 'placements', 'submissions', 'studentSubmissionPlacements',
+            'studentSubmissionSources', 'studentLatestSubmissions', 'search','periods','periodId','majors'));
+    }
+
+    public function showStudent(Request $request, Placement $placement)
+    {
+        abort_unless($request->user()->isRole('admin','koordinator'),403);
+        $data=$request->validate(['template_id'=>'nullable|integer|min:1','submission_id'=>'nullable|integer|min:1']);
+        $placement=Access::placement($request->user(),$placement->id);
+        $placement->load(['student.user','company','roster','period','assessment.assessor','assessment.approver',
+            'assessment.scores.criterion','certificate']);
+        $assessment=$placement->assessment;
+        $defaultTemplateId=$placement->roster
+            ? AssessmentTemplateDefault::where('major',$placement->roster->major)->value('assessment_template_id') : null;
+        $templates=$placement->roster
+            ? AssessmentTemplate::where('major',$placement->roster->major)->where('is_active',true)
+                ->when($defaultTemplateId,fn($query,$id)=>$query->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END',[$id]))
+                ->latest('id')->get() : collect();
+        $submissions=AssessmentSubmission::withoutPhotoData()->where('placement_id',$placement->id)
+            ->with(['submitter','applier'])->latest('id')->get();
+        $selectedSubmission=null;
+        $submissionIssue=null;
+        if ($data['submission_id']??null) {
+            $selectedSubmission=$submissions->firstWhere('id',(int)$data['submission_id']);
+            abort_unless($selectedSubmission,404);
+        } else {
+            $selectedSubmission=$submissions->firstWhere('status','submitted');
+        }
+        $selectedTemplate=null;
+        if ($assessment) {
+            if ($selectedSubmission && $selectedSubmission->status==='submitted'
+                && (int)$assessment->assessment_template_id!==(int)$selectedSubmission->assessment_template_id) {
+                $submissionIssue='Kriteria setoran siswa berbeda dari template penilaian yang sudah digunakan.';
+            }
+        } elseif ($data['template_id']??null) {
+            $selectedTemplate=$templates->firstWhere('id',(int)$data['template_id']);
+            abort_unless($selectedTemplate,422,'Template tidak sesuai jurusan atau sudah dinonaktifkan.');
+        } elseif ($selectedSubmission?->status==='submitted') {
+            $selectedTemplate=$templates->firstWhere('id',$selectedSubmission->assessment_template_id);
+            if (!$selectedTemplate) $submissionIssue='Template setoran tidak lagi aktif/kompatibel. Periksa sumber dan input manual.';
+        } else {
+            $selectedTemplate=$templates->firstWhere('id',$defaultTemplateId)??$templates->first();
+        }
+        $snapshot=$assessment?->template_snapshot?:$selectedTemplate?->snapshot();
+        if ($selectedSubmission?->status==='submitted' && !$submissionIssue && $snapshot!=$selectedSubmission->template_snapshot) {
+            $submissionIssue='Snapshot kriteria setoran tidak sama dengan form resmi. Nilai tidak diterapkan otomatis.';
+        }
+        $evidenceItems=$assessment?->evidence()->select('id','assessment_id','uploaded_by','assessment_revision','assessment_status',
+            'original_name','mime','size','sha256','note','created_at')->with('uploader')->latest('id')->get()??collect();
+        $today=now('Asia/Jakarta')->startOfDay();
+        $endsAt=$placement->roster?->internship_ends_at?->copy()->startOfDay();
+        $startsAt=$placement->roster?->internship_starts_at?->copy()->startOfDay();
+        $finished=$endsAt?->lte($today)??false;
+        $daysSinceEnd=$finished?$endsAt->diffInDays($today):null;
+        $daysUntilEnd=$endsAt&&!$finished?$today->diffInDays($endsAt):null;
+        return view('assessments.show',compact('placement','assessment','templates','defaultTemplateId','selectedTemplate',
+            'selectedSubmission','submissionIssue','snapshot','submissions','evidenceItems','today','startsAt','endsAt',
+            'finished','daysSinceEnd','daysUntilEnd'));
     }
 
     public function store(Request $request)
@@ -67,6 +123,7 @@ class AssessmentController
         $data = $request->validate([
             'placement_id' => ['required', 'integer'],
             'template_id' => ['required', 'integer', 'exists:assessment_templates,id'],
+            'submission_id' => ['nullable','integer','exists:assessment_submissions,id'],
             'revision' => ['required', 'integer', 'min:0'],
             'intent' => ['required', 'in:draft,submitted'],
             'industry_assessor' => ['required', 'string', 'max:150'],
@@ -99,6 +156,14 @@ class AssessmentController
                 abort_unless($template->major === $placement->roster->major, 422, 'Template tidak sesuai jurusan siswa pada tahun ajaran penempatan.');
                 $snapshot = $template->snapshot();
             }
+            $submission = null;
+            if (! empty($data['submission_id'])) {
+                $submission = AssessmentSubmission::whereKey($data['submission_id'])->where('placement_id',$placement->id)
+                    ->where('status','submitted')->lockForUpdate()->firstOrFail();
+                abort_unless((int)$submission->assessment_template_id === (int)$data['template_id']
+                    && $submission->template_snapshot == $snapshot, 422,
+                    'Kriteria setoran siswa tidak kompatibel dengan template penilaian resmi.');
+            }
             $rules = [];
             foreach ($snapshot['fields'] as $field) {
                 $rules['values.'.$field['key']] = $field['type'] === 'score'
@@ -126,9 +191,14 @@ class AssessmentController
                 'notes' => $data['notes'] ?? null, 'status' => $data['intent'],
                 'approved_by' => null, 'approved_at' => null, 'revision' => ($existing?->revision ?? 0) + 1,
             ]);
-            Audit::record('assessment.'.$data['intent'], $assessment, ['before' => $before, 'values' => $values, 'calculated_score' => $calculated, 'final_score' => $assessment->final_score]);
+            if ($submission) {
+                $submission->update(['status'=>'applied','applied_by'=>$request->user()->id,'applied_at'=>now()]);
+                Audit::record('assessment_submission.applied', $submission, ['assessment_id'=>$assessment->id,'coordinator_adjusted_values'=>$values != $submission->field_values]);
+            }
+            Audit::record('assessment.'.$data['intent'], $assessment, ['before' => $before, 'values' => $values, 'calculated_score' => $calculated,
+                'final_score' => $assessment->final_score, 'submission_id'=>$submission?->id]);
         });
-        return redirect()->route('assessments.index', ['placement_id' => $data['placement_id']])->with('success', 'Nilai industri dan ketentuan template tersimpan.');
+        return redirect()->route('assessments.student', $data['placement_id'])->with('success', 'Nilai industri dan ketentuan template tersimpan.');
     }
 
     public function weights(Request $request)
