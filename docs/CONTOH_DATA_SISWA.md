@@ -18,9 +18,9 @@ php artisan db:seed --class=StudentPklDemoSeeder
 - Tidak dipanggil otomatis oleh DatabaseSeeder. Tidak perlu `migrate:fresh`, dan jangan jalankan ulang DatabaseSeeder lama untuk contoh ini.
 - Seeder belum otomatis dijalankan ke database pengguna. Jalankan perintah di atas hanya jika ingin menambahkan contoh di lingkungan lokal.
 
-## Template CSV
+## Template XLSX / CSV
 
-Buka **Data Siswa → Impor Data Siswa Massal**. Unduhan utama langsung memuat delapan baris contoh (satu per jurusan); dua baris ditampilkan di halaman sebagai panduan. Tersedia juga template kosong opsional dan template jadwal dengan contoh. Ganti data contoh sebelum dipakai untuk data asli.
+Buka **Data Siswa → Impor Data Siswa Massal**. Unduhan XLSX utama langsung memuat delapan baris contoh (satu per jurusan); dua baris ditampilkan di halaman sebagai panduan. Tersedia juga template kosong opsional dan template jadwal dengan contoh. Kolom NIS/NISN dan tanggal dipertahankan sebagai teks, sehingga tanggal contoh tetap `YYYY-MM-DD` ketika dibuka di Excel. XLSX dapat langsung diunggah tanpa disimpan ulang sebagai CSV. Importer tetap menerima CSV lama. Ganti data contoh sebelum dipakai untuk data asli.
 
 ## Prompt alternatif untuk ChatGPT
 

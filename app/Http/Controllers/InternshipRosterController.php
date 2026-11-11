@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\{Coordinate, DataType};
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\{Alignment, Fill, Style};
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class InternshipRosterController
 {
@@ -254,9 +260,10 @@ class InternshipRosterController
     {
         $data = $request->validate([
             'academic_year' => ['required', 'regex:/^\d{4}\/\d{4}$/'],
-            'roster_file' => ['required', 'file', 'mimes:csv,txt', 'max:5120'],
+            'roster_file' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:5120'],
         ]);
-        [$headers, $rows] = $this->readCsv($request->file('roster_file')->getRealPath());
+        $file=$request->file('roster_file');
+        [$headers, $rows] = $this->readImportFile($file->getRealPath(),strtolower($file->getClientOriginalExtension()));
         $required = ['nis', 'nama', 'kelas', 'jurusan'];
         $missing = array_values(array_diff($required, $headers));
         if ($missing) {
@@ -431,25 +438,64 @@ class InternshipRosterController
         $schedule = ($data['type'] ?? 'students') === 'schedule';
         $example = $request->boolean('example', true);
         $academicYear = $data['academic_year'] ?? $this->currentAcademicYear();
-        $filename = ($example ? 'contoh-' : 'template-').'import-siswa'.($schedule ? '-jadwal-pkl' : '').'.csv';
+        $filename = ($example ? 'contoh-' : 'template-').'import-siswa'.($schedule ? '-jadwal-pkl' : '').'.xlsx';
 
         return response()->streamDownload(function () use ($schedule, $example, $academicYear): void {
-            $output = fopen('php://output', 'w');
-            fwrite($output, "\xEF\xBB\xBF");
+            $book=new Spreadsheet();
+            $sheet=$book->getActiveSheet();
+            $sheet->setTitle($schedule?'Siswa dan Jadwal':'Data Siswa');
             $headers = ['tahun_ajaran', 'nis', 'nisn', 'nama', 'tanggal_lahir', 'kelas', 'jurusan', 'email', 'catatan'];
             if ($schedule) $headers = array_merge($headers, ['status_magang', 'mulai_pkl', 'selesai_pkl']);
-            fputcsv($output, $headers);
+            foreach ($headers as $index=>$header) {
+                $sheet->setCellValueExplicit(Coordinate::stringFromColumnIndex($index+1).'1',$header,DataType::TYPE_STRING);
+            }
+            $lastColumn=Coordinate::stringFromColumnIndex(count($headers));
+            $sheet->getStyle('A1:'.$lastColumn.'1')->applyFromArray([
+                'font'=>['bold'=>true,'color'=>['rgb'=>'FFFFFF']],
+                'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'1F4E78']],
+                'alignment'=>['horizontal'=>Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->freezePane('A2');
+            $sheet->setAutoFilter('A1:'.$lastColumn.'1');
+            $textHeaders=['tahun_ajaran','nis','nisn','tanggal_lahir'];
+            if ($schedule) array_push($textHeaders,'mulai_pkl','selesai_pkl');
+            $textStyle=new Style();
+            $textStyle->getNumberFormat()->setFormatCode('@');
+            $book->addCellXf($textStyle);
+            foreach ($headers as $index=>$header) {
+                $column=Coordinate::stringFromColumnIndex($index+1);
+                $sheet->getColumnDimension($column)->setWidth(in_array($header,['nama','jurusan','catatan'],true)?32:18);
+                if (in_array($header,$textHeaders,true)) {
+                    $sheet->getColumnDimension($column)->setXfIndex($textStyle->getIndex());
+                }
+            }
             if ($example) {
                 foreach (InternshipRoster::officialMajors() as $index => $major) {
                     $number = $index + 1;
                     $row = [$academicYear, 'CONTOH'.str_pad($number, 3, '0', STR_PAD_LEFT), '', 'Contoh Siswa '.$number,
                         '2008-11-07', 'XII 1', $major, '', 'Data contoh: ganti dengan data asli'];
                     if ($schedule) $row = array_merge($row, ['magang', substr($academicYear, 0, 4).'-07-01', substr($academicYear, 0, 4).'-12-31']);
-                    fputcsv($output, $row);
+                    foreach ($row as $columnIndex=>$value) {
+                        $sheet->setCellValueExplicit(Coordinate::stringFromColumnIndex($columnIndex+1).($index+2),(string)$value,DataType::TYPE_STRING);
+                    }
                 }
             }
-            fclose($output);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+            $guide=$book->createSheet();
+            $guide->setTitle('Petunjuk');
+            $guide->fromArray([
+                ['PETUNJUK IMPOR SISWA'],
+                ['1. Isi sheet pertama. Jangan mengubah nama header.'],
+                ['2. tanggal_lahir, mulai_pkl, dan selesai_pkl wajib YYYY-MM-DD. Contoh: 2008-11-07.'],
+                ['3. NIS dan NISN diformat sebagai teks agar nol di depan tidak hilang.'],
+                ['4. File XLSX ini dapat langsung diunggah; tidak perlu disimpan ulang sebagai CSV.'],
+                ['5. Baris contoh adalah data fiktif dan harus diganti atau dihapus sebelum data produksi.'],
+            ]);
+            $guide->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $guide->getColumnDimension('A')->setWidth(110);
+            $book->setActiveSheetIndex(0);
+            (new Xlsx($book))->save('php://output');
+            $book->disconnectWorksheets();
+        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
     private function filteredQuery(Request $request, string $academicYear): Builder
@@ -511,6 +557,50 @@ class InternshipRosterController
         ]);
         if ($data['internship_status'] !== 'internship') $data['internship_period_id'] = null;
         return $data;
+    }
+
+    private function readImportFile(string $path,string $extension): array
+    {
+        return $extension==='xlsx'?$this->readSpreadsheet($path):$this->readCsv($path);
+    }
+
+    private function readSpreadsheet(string $path): array
+    {
+        try {
+            $reader=IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+            $book=$reader->load($path);
+            $sheet=$book->getSheet(0);
+            $highestColumn=min(50,Coordinate::columnIndexFromString($sheet->getHighestDataColumn()));
+            $highestRow=min(5002,max(1,$sheet->getHighestDataRow()));
+            $lastColumn=Coordinate::stringFromColumnIndex(max(1,$highestColumn));
+            $matrix=$sheet->rangeToArray('A1:'.$lastColumn.$highestRow,null,false,false);
+            $rawHeaders=array_shift($matrix)??[];
+            $headers=array_map(fn($header)=>$this->normalizeHeader((string)$header),$rawHeaders);
+            while ($headers && end($headers)==='') array_pop($headers);
+            if (!$headers || count(array_unique($headers))!==count($headers) || in_array('', $headers,true)) {
+                throw ValidationException::withMessages(['roster_file'=>'Header kolom XLSX tidak boleh kosong atau berulang. Gunakan template yang disediakan.']);
+            }
+            $dateColumns=array_flip(array_intersect($headers,['tanggal_lahir','mulai_pkl','selesai_pkl']));
+            $rows=[];
+            foreach ($matrix as $values) {
+                $values=array_slice(array_pad($values,count($headers),''),0,count($headers));
+                foreach ($dateColumns as $header=>$unused) {
+                    $index=array_search($header,$headers,true);
+                    if ($index!==false && is_numeric($values[$index]) && (float)$values[$index]>0) {
+                        $values[$index]=ExcelDate::excelToDateTimeObject((float)$values[$index])->format('Y-m-d');
+                    }
+                }
+                $rows[]=array_combine($headers,array_map(fn($value)=>is_scalar($value)?(string)$value:'',$values));
+            }
+            $book->disconnectWorksheets();
+            return [$headers,$rows];
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            report($exception);
+            throw ValidationException::withMessages(['roster_file'=>'File XLSX tidak dapat dibaca. Unduh ulang template dan pastikan file tidak rusak atau dilindungi kata sandi.']);
+        }
     }
 
     private function readCsv(string $path): array
