@@ -37,7 +37,7 @@ class MonitoringCoordinatorTest extends TestCase
             $this->assertNull($record->teacher_id);
             $this->assertDatabaseHas('audit_logs', ['action' => 'monitoring.created', 'subject_id' => $record->id, 'user_id' => $actor->id]);
             $this->get(route('monitoring.index', ['placement_id' => $placement->id]))->assertOk()
-                ->assertSee('ID: '.$actor->id)->assertSee('Tidak ditetapkan')->assertSee($record->notes);
+                ->assertSee('ID: '.$actor->id)->assertSee('Pengaju: Koordinator')->assertSee('Tidak ditetapkan')->assertSee($record->notes);
         }
         $assigned = Placement::whereNotNull('teacher_id')->firstOrFail();
         $this->post(route('monitoring.store'), $this->payload($assigned))->assertSessionHasNoErrors()->assertRedirect();
@@ -45,7 +45,7 @@ class MonitoringCoordinatorTest extends TestCase
             'created_by' => $actor->id, 'teacher_id' => $assigned->teacher_id]);
     }
 
-    public function test_teacher_scope_is_enforced_for_search_selection_and_writes_and_students_cannot_access(): void
+    public function test_teacher_scope_is_enforced_for_search_selection_and_writes(): void
     {
         $teacher = User::where('role', 'guru')->firstOrFail();
         $own = Placement::where('teacher_id', $teacher->id)->firstOrFail();
@@ -57,11 +57,47 @@ class MonitoringCoordinatorTest extends TestCase
         $this->get(route('monitoring.index', ['q' => $other->student->nis]))->assertOk()
             ->assertViewHas('candidates', fn ($rows) => $rows->total() === 0);
         $this->get(route('monitoring.index'))->assertOk()
-            ->assertViewHas('items', fn ($rows) => $rows->total() === 1);
+            ->assertViewHas('items', fn ($rows) => $rows->total() === 1)->assertSee('Pengaju: Guru pendamping');
         $this->actingAs(User::where('role', 'admin')->firstOrFail())
             ->post(route('monitoring.store'), $this->payload($own))->assertForbidden();
-        $this->actingAs($own->student->user)->get(route('monitoring.index'))->assertForbidden();
-        $this->post(route('monitoring.store'), $this->payload($own))->assertForbidden();
+    }
+
+    public function test_student_can_report_own_issue_and_coordinator_and_assigned_teacher_can_see_it(): void
+    {
+        $placement=Placement::whereNotNull('teacher_id')->with(['student.user','teacher'])->firstOrFail();
+        $student=$placement->student->user;
+        $other=Placement::where('student_id','!=',$placement->student_id)->firstOrFail();
+        $this->actingAs($student)->get(route('monitoring.index'))->assertOk()
+            ->assertViewHas('selected',fn($selected)=>$selected?->id===$placement->id)
+            ->assertSee('Ajukan Kendala PKL')->assertSee('Kirim Pengaduan')->assertSee('Pengaduan akan terlihat');
+        $payload=['placement_id'=>$placement->id,'visit_date'=>'2026-10-23','category'=>'technical',
+            'notes'=>'Mesin praktik mengalami gangguan dan pekerjaan tidak dapat dilanjutkan.'];
+        $before=MonitoringRecord::count();
+        $this->post(route('monitoring.store'),$payload+['follow_up'=>'Siswa tidak boleh menetapkan tindak lanjut.'])
+            ->assertSessionHasErrors('follow_up');
+        $this->assertSame($before,MonitoringRecord::count());
+        $this->post(route('monitoring.store'),$payload)->assertSessionHasNoErrors()
+            ->assertRedirect(route('monitoring.index',['placement_id'=>$placement->id]));
+        $record=MonitoringRecord::latest('id')->firstOrFail();
+        $this->assertSame($student->id,$record->created_by);
+        $this->assertSame($placement->teacher_id,$record->teacher_id);
+        $this->assertNull($record->coordinator_id);
+        $this->assertSame('open',$record->case_status);
+        $this->assertSame('Siswa',$record->load('creator')->reporterRoleLabel());
+        $this->post(route('monitoring.store'),array_replace($payload,['placement_id'=>$other->id]))->assertNotFound();
+
+        $coordinator=User::where('role','koordinator')->firstOrFail();
+        $this->actingAs($coordinator)->get(route('monitoring.index',['q'=>$placement->student->nis,'reporter'=>'siswa']))
+            ->assertOk()->assertSee('1 pengaduan siswa perlu diperiksa')->assertSee('Pengaju: Siswa')
+            ->assertViewHas('items',fn($items)=>$items->contains('id',$record->id));
+        $this->actingAs($placement->teacher)->get(route('monitoring.index',['q'=>$placement->student->nis]))
+            ->assertOk()->assertSee('Pengaju: Siswa')->assertViewHas('items',fn($items)=>$items->contains('id',$record->id));
+        $this->get(route('monitoring.show',$record))->assertOk()->assertSee('Pengaju: Siswa');
+        $otherTeacher=User::where('role','guru')->where('id','!=',$placement->teacher_id)->firstOrFail();
+        $this->actingAs($otherTeacher)->get(route('monitoring.show',$record))->assertNotFound();
+        $this->actingAs($student)->get(route('monitoring.show',$record))->assertOk()
+            ->assertSee('Anda dapat memantau seluruh perkembangan')->assertDontSee('Simpan Tindak Lanjut');
+        $this->put(route('monitoring.update',$record),[])->assertForbidden();
     }
 
     public function test_search_and_year_major_filters_apply_to_both_candidates_and_history_with_historical_labels(): void

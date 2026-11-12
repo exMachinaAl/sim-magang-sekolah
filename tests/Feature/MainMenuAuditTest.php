@@ -43,11 +43,10 @@ class MainMenuAuditTest extends TestCase
         }
         $this->get(route('reports.index'))->assertDontSee('RED FLAG — modul belum sepenuhnya sinkron');
         $this->actingAs(User::where('role', 'siswa')->firstOrFail());
-        foreach (['dashboard', 'timeline.index', 'journals.index', 'assessments.index', 'certificates.index'] as $route) {
+        foreach (['dashboard', 'timeline.index', 'journals.index', 'monitoring.index', 'assessments.index', 'certificates.index'] as $route) {
             $response=$this->get(route($route))->assertOk()->assertDontSee('Periksa sumber jadwal di Kontrol PKL');
             $response->assertDontSee('data-module-health=',false);
         }
-        $this->get(route('monitoring.index'))->assertForbidden();
         $this->get(route('internships.index'))->assertForbidden();
         $this->actingAs(User::where('role', 'guru')->firstOrFail())->get(route('monitoring.index'))
             ->assertOk()->assertDontSee('data-module-health="monitoring"', false);

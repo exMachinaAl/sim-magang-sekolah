@@ -18,7 +18,9 @@ class MonitoringController
             'page' => 'nullable|integer|min:1', 'candidates_page' => 'nullable|integer|min:1',
             'case_status' => ['nullable',Rule::in(array_keys(MonitoringRecord::statuses()))],
             'category' => ['nullable',Rule::in(array_keys(MonitoringRecord::categories()))],
+            'reporter' => ['nullable',Rule::in(array_keys(MonitoringRecord::reporterRoles()))],
         ]);
+        $isStudent = $request->user()->isRole('siswa');
         $q = trim($data['q'] ?? '');
         $major = $data['major'] ?? '';
         $scope = Access::placements($request->user());
@@ -39,7 +41,10 @@ class MonitoringController
         if (!is_scalar($selectedId) || !ctype_digit((string) $selectedId)) $selectedId = null;
         $selected = $selectedId ? (clone $scope)->with(['student.user', 'roster', 'period', 'teacher'])
             ->findOrFail($selectedId) : null;
-        $showCandidates=$q!=='' || $major!=='' || ($request->has('period_id') && $periodId) || $selected;
+        if (!$selected && !$selectedId && $isStudent) {
+            $selected=(clone $filtered)->with(['student.user','roster','period','teacher'])->orderByDesc('id')->first();
+        }
+        $showCandidates=!$isStudent && ($q!=='' || $major!=='' || ($request->has('period_id') && $periodId) || $selected);
         $candidates = (clone $filtered)->with(['student.user', 'roster', 'period'])
             ->when(!$showCandidates, fn ($p) => $p->whereRaw('1 = 0'))
             ->orderBy('id')->paginate(10, ['*'], 'candidates_page')->withQueryString();
@@ -48,18 +53,22 @@ class MonitoringController
             ->when($selected, fn ($m) => $m->where('placement_id', $selected->id))
             ->when($data['case_status']??null,fn($m,$status)=>$m->where('case_status',$status))
             ->when($data['category']??null,fn($m,$category)=>$m->where('category',$category))
+            ->when($data['reporter']??null,fn($m,$role)=>$m->whereHas('creator',fn($u)=>$u->where('role',$role)))
             ->orderByDesc('visit_date')->orderByDesc('id')->paginate(15)->withQueryString();
+        $studentOpenCount=MonitoringRecord::whereIn('placement_id',(clone $filtered)->select('id'))
+            ->whereIn('case_status',['open','in_progress'])->whereHas('creator',fn($u)=>$u->where('role','siswa'))->count();
 
-        return view('monitoring.index', compact('items', 'candidates', 'selected', 'periods', 'majors', 'q', 'major', 'periodId','showCandidates'));
+        return view('monitoring.index', compact('items', 'candidates', 'selected', 'periods', 'majors', 'q', 'major', 'periodId','showCandidates','studentOpenCount','isStudent'));
     }
 
     public function store(Request $request)
     {
-        abort_unless($request->user()->isRole('koordinator', 'guru'), 403);
+        abort_unless($request->user()->isRole('koordinator', 'guru', 'siswa'), 403);
         $data = $request->validate([
             'placement_id' => 'required|integer|min:1',
             'visit_date' => 'required|date_format:Y-m-d|before_or_equal:'.now('Asia/Jakarta')->toDateString(),
-            'notes' => 'required|string|min:10|max:5000', 'follow_up' => 'nullable|string|max:3000',
+            'notes' => 'required|string|min:10|max:5000',
+            'follow_up' => $request->user()->isRole('siswa') ? ['prohibited'] : ['nullable','string','max:3000'],
             'category' => ['nullable',Rule::in(array_keys(MonitoringRecord::categories()))],
         ]);
         DB::transaction(function () use ($request, $data) {
@@ -67,14 +76,17 @@ class MonitoringController
             $record = MonitoringRecord::create(array_replace($data, [
                 'created_by' => $request->user()->id,
                 'teacher_id' => $placement->teacher_id,
+                'follow_up' => $data['follow_up']??null,
                 'category' => $data['category']??'other', 'case_status'=>'open','revision'=>1,
                 'coordinator_id'=>$request->user()->isRole('koordinator')?$request->user()->id:null,
             ]));
-            Audit::record('monitoring.created', $record);
+            Audit::record('monitoring.created', $record,['reporter_role'=>$request->user()->role,'placement_id'=>$placement->id]);
         });
 
         return redirect()->route('monitoring.index', ['placement_id' => $data['placement_id']])
-            ->with('success', 'Catatan monitoring tersimpan.');
+            ->with('success', $request->user()->isRole('siswa')
+                ? 'Pengaduan kendala terkirim. Koordinator dan guru pendamping terkait dapat melihat serta menindaklanjutinya.'
+                : 'Catatan monitoring tersimpan.');
     }
 
     public function show(Request $request, MonitoringRecord $record)

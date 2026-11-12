@@ -12,7 +12,7 @@
  <a class="nav-link {{ request()->routeIs('journals.*')?'active':'' }}" href="{{ route('journals.index') }}"><span>▤</span>Jurnal & Foto @include('partials.main-menu-badge',['module'=>'journals'])</a>
  <a class="nav-link {{ request()->routeIs('assessments.*','assessment-templates.*')?'active':'' }}" href="{{ route('assessments.index') }}"><span>◇</span>Penilaian @include('partials.main-menu-badge',['module'=>'assessments'])</a>
  @endif
- @if(auth()->user()->isRole('admin','koordinator','guru'))
+ @if(auth()->user()->isRole('admin','koordinator','guru','siswa'))
  <a class="nav-link {{ request()->routeIs('monitoring.*')?'active':'' }}" href="{{ route('monitoring.index') }}"><span>◎</span>Monitoring @include('partials.main-menu-badge',['module'=>'monitoring'])</a>
  @endif
  <a class="nav-link {{ request()->routeIs('certificates.*')?'active':'' }}" href="{{ route('certificates.index') }}"><span>▧</span>Sertifikat @include('partials.main-menu-badge',['module'=>'certificates'])</a>

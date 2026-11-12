@@ -26,9 +26,9 @@ Route::middleware(['auth','active'])->group(function(){
  Route::get('jurnal/penempatan/{placement}/excel',\App\Http\Controllers\JournalExcelController::class)->middleware('role:admin,koordinator,guru,siswa')->name('journals.excel');
  Route::post('jurnal/{journal}/qr',[\App\Http\Controllers\IndustryJournalController::class,'qr'])->middleware(['role:siswa','throttle:30,1'])->name('journals.qr');
  Route::get('jurnal/foto/{attachment}',[JournalController::class,'photo'])->middleware('role:admin,koordinator,guru,siswa')->name('journals.photo');
- Route::get('monitoring',[MonitoringController::class,'index'])->middleware('role:admin,koordinator,guru')->name('monitoring.index');
- Route::post('monitoring',[MonitoringController::class,'store'])->middleware('role:koordinator,guru')->name('monitoring.store');
- Route::get('monitoring/{record}',[MonitoringController::class,'show'])->middleware('role:admin,koordinator,guru')->name('monitoring.show');
+ Route::get('monitoring',[MonitoringController::class,'index'])->middleware('role:admin,koordinator,guru,siswa')->name('monitoring.index');
+ Route::post('monitoring',[MonitoringController::class,'store'])->middleware('role:koordinator,guru,siswa')->name('monitoring.store');
+ Route::get('monitoring/{record}',[MonitoringController::class,'show'])->middleware('role:admin,koordinator,guru,siswa')->name('monitoring.show');
  Route::put('monitoring/{record}',[MonitoringController::class,'update'])->middleware('role:koordinator')->name('monitoring.update');
  Route::get('penilaian',[AssessmentController::class,'index'])->middleware('role:admin,koordinator,guru,siswa')->name('assessments.index');
  Route::get('penilaian/siswa/{placement}',[AssessmentController::class,'showStudent'])->middleware('role:admin,koordinator')->name('assessments.student');

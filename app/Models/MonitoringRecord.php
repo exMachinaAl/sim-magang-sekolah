@@ -12,5 +12,7 @@ class MonitoringRecord extends Model {
  public function latestUpdate(){return $this->hasOne(MonitoringUpdate::class)->latestOfMany();}
  public static function statuses():array{return ['unclassified'=>'Belum diklasifikasi (catatan lama)','open'=>'Terbuka','in_progress'=>'Ditindaklanjuti','resolved'=>'Selesai'];}
  public static function categories():array{return ['introduction'=>'Pengantaran / koordinasi awal','technical'=>'Kendala teknis','attendance'=>'Kehadiran / kedisiplinan','safety'=>'Keselamatan / kondisi kerja','other'=>'Lainnya'];}
+ public static function reporterRoles():array{return ['siswa'=>'Siswa','guru'=>'Guru pendamping','koordinator'=>'Koordinator'];}
+ public function reporterRoleLabel():string{return self::reporterRoles()[$this->creator?->role]??($this->creator?->roleLabel()??'Catatan lama');}
  public function caseState():array{return $this->only(['case_status','category','coordinator_id','teacher_id','revision','resolved_at']);}
 }

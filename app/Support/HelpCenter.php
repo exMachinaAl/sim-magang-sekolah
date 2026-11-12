@@ -123,8 +123,8 @@ class HelpCenter
             'monitoring.show' => [
                 'key' => 'monitoring-kasus',
                 'title' => 'Tindak lanjut kasus monitoring',
-                'summary' => 'Gunakan riwayat kasus untuk penugasan, tindak lanjut, penutupan, atau pembukaan kembali masalah PKL.',
-                'steps' => ['Baca catatan awal dan riwayat sebelum mengubah status.', 'Tetapkan penanggung jawab jika guru perlu dilibatkan.', 'Tulis hasil tindak lanjut faktual; catatan lama tidak ditimpa.'],
+                'summary' => 'Detail kasus menampilkan pengaju, penanggung jawab, tindak lanjut, penutupan, atau pembukaan kembali masalah PKL.',
+                'steps' => ['Periksa tag pengaju dan catatan awal.', 'Koordinator menetapkan penanggung jawab serta guru opsional.', 'Tulis hasil tindak lanjut faktual; catatan lama tidak ditimpa.', 'Siswa dapat membaca perkembangan kasusnya tetapi tidak mengubah status.'],
             ],
             'students.*' => [
                 'key' => 'data-siswa',
@@ -201,8 +201,14 @@ class HelpCenter
             'monitoring.*' => [
                 'key' => 'monitoring',
                 'title' => 'Monitoring',
-                'summary' => 'Monitoring digunakan untuk mencatat kunjungan atau kasus yang memerlukan tindak lanjut, bukan checklist rutin wajib guru.',
-                'steps' => ['Cari siswa berdasarkan nama/NIS dan tahun.', 'Catat keadaan faktual serta tindak lanjut yang diperlukan.', 'Koordinator dapat menugaskan guru secara opsional, menutup, atau membuka kembali kasus dengan riwayat.'],
+                'summary' => 'Monitoring menampung pengaduan langsung siswa dan laporan pendamping untuk kasus yang memerlukan tindak lanjut.',
+                'steps' => ['Siswa memilih periode penempatannya lalu menjelaskan kendala secara faktual.', 'Guru atau koordinator tetap dapat membuat laporan melalui pencarian siswa; tag pengaju tersimpan otomatis.', 'Koordinator menetapkan penanggung jawab, mencatat tindakan, menutup, atau membuka kembali kasus dengan riwayat.'],
+                'roles' => [
+                    'siswa' => 'Kirim pengaduan untuk penempatan Anda sendiri dan pantau statusnya; Anda tidak dapat mengubah tindak lanjut koordinator.',
+                    'guru' => 'Lihat pengaduan siswa yang ditugaskan dan tetap dapat membuat laporan pendamping bila siswa mengadu secara lisan.',
+                    'koordinator' => 'Periksa pengaduan terbuka, tetapkan penanggung jawab, lalu simpan setiap tindakan sebagai riwayat.',
+                    'admin' => 'Akses admin bersifat pemeriksaan; tindakan operasional tetap dilakukan koordinator.',
+                ],
             ],
             'assessments.*' => [
                 'key' => 'penilaian',

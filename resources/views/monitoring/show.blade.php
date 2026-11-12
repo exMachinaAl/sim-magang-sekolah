@@ -9,8 +9,9 @@
 <p>NIS {{ $record->placement->student->nis }} · {{ $record->placement->period->academic_year }}<br>{{ $record->placement->roster?->class_name ?? '—' }} · {{ $record->placement->roster?->major ?? 'Roster belum terhubung' }}</p>
 <p><strong>{{ $statuses[$record->case_status] ?? $record->case_status }}</strong> · {{ $categories[$record->category] ?? 'Kategori belum ditetapkan' }} · Versi {{ $record->revision }}</p>
 @if($record->case_status==='unclassified')<p class="note-box">Catatan lama belum ditentukan statusnya. Sistem tidak menganggap kasus ini sudah selesai; koordinator perlu mengklasifikasikannya.</p>@endif
+<p><span class="pill">Pengaju: {{ $record->reporterRoleLabel() }}</span></p>
 <p>Penanggung jawab: {{ $record->coordinator?->name ?? 'Belum ditetapkan' }} (ID {{ $record->coordinator_id ?? '—' }})<br>Guru pendamping: {{ $record->teacher?->name ?? 'Tidak ditetapkan' }} (ID {{ $record->teacher_id ?? '—' }})</p>
-<p>Tanggal kejadian: {{ $record->visit_date->format('d/m/Y') }}<br>Pencatat awal: {{ $record->creator?->name ?? 'Tidak tercatat' }} · ID {{ $record->created_by ?? '—' }} · {{ $record->created_at?->format('d/m/Y H:i') }}</p>
+<p>Tanggal kejadian: {{ $record->visit_date->format('d/m/Y') }}<br>Pengaju awal: {{ $record->creator?->name ?? 'Tidak tercatat' }} · ID {{ $record->created_by ?? '—' }} · {{ $record->created_at?->format('d/m/Y H:i') }}</p>
 <h3>Catatan awal</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $record->notes }}</p>
 <h3>Tindak lanjut awal</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $record->follow_up ?? 'Belum ada.' }}</p>
 @if($record->resolved_at)<p>Ditandai selesai pada {{ $record->resolved_at->format('d/m/Y H:i') }}. Ini status penanganan kasus, bukan status PKL siswa.</p>@endif</div>
@@ -26,6 +27,7 @@
 <label>Catatan tindak lanjut / alasan perubahan<textarea name="note" required minlength="10" maxlength="3000">{{ is_string(old('note')) ? old('note') : '' }}</textarea></label>
 </div><p class="small muted">Pilihan guru mengikuti penempatan siswa agar akses tidak meluas ke siswa lain. Tidak ada kewajiban kunjungan rutin dan tidak ada perubahan otomatis pada Kontrol PKL.</p>
 <button class="btn btn-primary">Simpan Tindak Lanjut</button></form></div>
+@elseif(auth()->user()->isRole('siswa'))<p class="note-box">Status dan tindak lanjut ditulis koordinator. Anda dapat memantau seluruh perkembangan kasus pada riwayat di bawah.</p>
 @else<p>Perubahan status dan penugasan hanya dilakukan koordinator.</p>@endif
 <div class="card"><h2>Riwayat perubahan</h2>
 @forelse($items as $event)<div style="padding:12px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere">

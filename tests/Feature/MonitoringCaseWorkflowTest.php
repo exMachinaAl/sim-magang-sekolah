@@ -63,7 +63,8 @@ class MonitoringCaseWorkflowTest extends TestCase
         $this->actingAs($p->teacher)->get(route('monitoring.show',$m))->assertOk()->assertDontSee('Simpan Tindak Lanjut');
         $this->put(route('monitoring.update',$m),$this->payload($m))->assertForbidden();
         $this->actingAs($other)->get(route('monitoring.show',$m))->assertNotFound();
-        $this->actingAs($p->student->user)->get(route('monitoring.show',$m))->assertForbidden();
+        $this->actingAs($p->student->user)->get(route('monitoring.show',$m))->assertOk()->assertDontSee('Simpan Tindak Lanjut');
+        $this->put(route('monitoring.update',$m),$this->payload($m))->assertForbidden();
         $this->actingAs(User::where('role','admin')->firstOrFail())->get(route('monitoring.show',$m))->assertOk()->assertDontSee('Simpan Tindak Lanjut');
         $this->put(route('monitoring.update',$m),$this->payload($m))->assertForbidden();
     }
