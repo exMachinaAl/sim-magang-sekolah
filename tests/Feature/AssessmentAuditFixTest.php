@@ -70,11 +70,16 @@ class AssessmentAuditFixTest extends TestCase
         $teacher=$a->placement->teacher;
         $other=Placement::whereNull('teacher_id')->whereHas('assessment')->firstOrFail();
         $this->actingAs($teacher)->get(route('assessments.index',['q'=>$other->student->nis]))->assertOk()->assertViewHas('items',fn($rows)=>$rows->total()===0);
-        foreach ([$teacher,$a->placement->student->user] as $user) {
-            $this->actingAs($user)->get(route('assessments.evidence.index',$a))->assertForbidden();
-            $this->get(route('assessments.evidence.download',$e))->assertForbidden();
-            $this->upload($a)->assertForbidden();
-        }
+        $this->actingAs($teacher)->get(route('assessments.evidence.index',$a))->assertOk()->assertSee('Nilai resmi');
+        $this->get(route('assessments.evidence.download',$e))->assertOk();
+        $this->upload($a)->assertForbidden();
+        $otherTeacher=User::where('role','guru')->where('id','!=',$teacher->id)->firstOrFail();
+        $this->actingAs($otherTeacher)->get(route('assessments.evidence.index',$a))->assertNotFound();
+        $this->get(route('assessments.evidence.download',$e))->assertNotFound();
+        $student=$a->placement->student->user;
+        $this->actingAs($student)->get(route('assessments.evidence.index',$a))->assertForbidden();
+        $this->get(route('assessments.evidence.download',$e))->assertForbidden();
+        $this->upload($a)->assertForbidden();
         $this->actingAs($a->placement->student->user)->get(route('assessments.index'))->assertOk()
             ->assertViewHas('items',fn($items)=>$items->every(fn($item)=>$item->status==='approved' && $item->placement_id===$a->placement_id));
         $a->update(['status'=>'draft']);

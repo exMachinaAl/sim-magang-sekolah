@@ -42,7 +42,7 @@ class AssessmentController
             ? (clone $scope)->with(['student.user', 'period', 'company','roster','assessment','certificate'])
                 ->withCount(['assessmentSubmissions as pending_submission_count'=>fn($q)=>$q->where('status','submitted')])
                 ->latest()->paginate(10, ['*'], 'search_page')->withQueryString() : collect();
-        $submissions = $user->isRole('koordinator')
+        $submissions = $user->isRole('koordinator','guru')
             ? AssessmentSubmission::withoutPhotoData()->whereIn('placement_id', (clone $scope)->select('id'))->where('status','submitted')
                 ->with(['placement.student.user','placement.roster','placement.period','placement.company','placement.assessment','submitter'])
                 ->latest('id')->paginate(10, ['*'], 'submission_page')->withQueryString() : collect();
@@ -63,7 +63,7 @@ class AssessmentController
 
     public function showStudent(Request $request, Placement $placement)
     {
-        abort_unless($request->user()->isRole('admin','koordinator'),403);
+        abort_unless($request->user()->isRole('admin','koordinator','guru'),403);
         $data=$request->validate(['template_id'=>'nullable|integer|min:1','submission_id'=>'nullable|integer|min:1']);
         $placement=Access::placement($request->user(),$placement->id);
         $placement->load(['student.user','company','roster','period','assessment.assessor','assessment.approver',

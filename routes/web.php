@@ -31,14 +31,14 @@ Route::middleware(['auth','active'])->group(function(){
  Route::get('monitoring/{record}',[MonitoringController::class,'show'])->middleware('role:admin,koordinator,guru,siswa')->name('monitoring.show');
  Route::put('monitoring/{record}',[MonitoringController::class,'update'])->middleware('role:koordinator')->name('monitoring.update');
  Route::get('penilaian',[AssessmentController::class,'index'])->middleware('role:admin,koordinator,guru,siswa')->name('assessments.index');
- Route::get('penilaian/siswa/{placement}',[AssessmentController::class,'showStudent'])->middleware('role:admin,koordinator')->name('assessments.student');
+ Route::get('penilaian/siswa/{placement}',[AssessmentController::class,'showStudent'])->middleware('role:admin,koordinator,guru')->name('assessments.student');
  Route::post('penilaian/setoran-siswa',[\App\Http\Controllers\AssessmentSubmissionController::class,'store'])->middleware('role:siswa')->name('assessments.submissions.store');
- Route::get('penilaian/setoran-siswa/{submission}/foto',[\App\Http\Controllers\AssessmentSubmissionController::class,'photo'])->middleware('role:admin,koordinator,siswa')->name('assessments.submissions.photo');
+ Route::get('penilaian/setoran-siswa/{submission}/foto',[\App\Http\Controllers\AssessmentSubmissionController::class,'photo'])->middleware('role:admin,koordinator,guru,siswa')->name('assessments.submissions.photo');
  Route::post('penilaian',[AssessmentController::class,'store'])->middleware('role:koordinator')->name('assessments.store');
  Route::put('penilaian/{assessment}/validasi',[AssessmentController::class,'approve'])->middleware('role:koordinator')->name('assessments.approve');
- Route::get('penilaian/{assessment}/bukti',[\App\Http\Controllers\AssessmentEvidenceController::class,'index'])->middleware('role:admin,koordinator')->name('assessments.evidence.index');
+ Route::get('penilaian/{assessment}/bukti',[\App\Http\Controllers\AssessmentEvidenceController::class,'index'])->middleware('role:admin,koordinator,guru')->name('assessments.evidence.index');
  Route::post('penilaian/{assessment}/bukti',[\App\Http\Controllers\AssessmentEvidenceController::class,'store'])->middleware('role:koordinator')->name('assessments.evidence.store');
- Route::get('bukti-penilaian/{evidence}',[\App\Http\Controllers\AssessmentEvidenceController::class,'download'])->middleware('role:admin,koordinator')->name('assessments.evidence.download');
+ Route::get('bukti-penilaian/{evidence}',[\App\Http\Controllers\AssessmentEvidenceController::class,'download'])->middleware('role:admin,koordinator,guru')->name('assessments.evidence.download');
  Route::get('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'index'])->middleware('role:koordinator')->name('certificate-print-templates.index');
  Route::post('sertifikat/template', [\App\Http\Controllers\CertificatePrintTemplateController::class,'store'])->middleware('role:koordinator')->name('certificate-print-templates.store');
  Route::put('sertifikat/template/{template}/default', [\App\Http\Controllers\CertificatePrintTemplateController::class,'makeDefault'])->middleware('role:koordinator')->name('certificate-print-templates.default');

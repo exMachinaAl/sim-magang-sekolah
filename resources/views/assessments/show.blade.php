@@ -8,6 +8,7 @@
     $statusLabels=['draft'=>'Draf','submitted'=>'Menunggu pengesahan','revision'=>'Perlu revisi','approved'=>'Disahkan'];
     $prefill=$selectedSubmission?->status==='submitted'&&!$submissionIssue?$selectedSubmission:null;
 @endphp
+@if(auth()->user()->isRole('guru'))<p class="note-box"><strong>Mode lihat saja.</strong> Anda dapat memeriksa setoran siswa, foto, hasil akhir, dan bukti tambahan untuk siswa yang ditugaskan. Penerapan, perubahan, serta pengesahan nilai tetap dilakukan koordinator.</p>@endif
 
 @if($assessment?->status==='approved' && $placement->certificate)
 <p class="note-box"><strong>Nilai selesai dan sertifikat sudah dibuat.</strong> Status sertifikat: {{ $placement->certificate->statusLabel() }}.</p>

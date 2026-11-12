@@ -22,7 +22,7 @@ class StudentAssessmentSubmissionTest extends TestCase
 
     private function candidate(): Placement
     {
-        return Placement::whereDoesntHave('assessment')->whereHas('roster')->with(['student.user','roster'])->firstOrFail();
+        return Placement::whereDoesntHave('assessment')->whereNotNull('teacher_id')->whereHas('roster')->with(['student.user','roster','teacher'])->firstOrFail();
     }
 
     private function payload(Placement $placement): array
@@ -66,6 +66,18 @@ class StudentAssessmentSubmissionTest extends TestCase
         $this->actingAs($other)->get(route('assessments.submissions.photo',$submission))->assertNotFound();
         $this->post(route('assessments.submissions.store'), $payload)->assertNotFound();
 
+        $teacher=$placement->teacher;
+        $this->actingAs($teacher)->get(route('assessments.index'))->assertOk()
+            ->assertSee('Setoran nilai dari siswa')->assertSee('Lihat Penilaian &amp; Bukti',false)
+            ->assertViewHas('submissions',fn($items)=>$items->contains('id',$submission->id));
+        $this->get(route('assessments.student',[$placement,'submission_id'=>$submission->id]))->assertOk()
+            ->assertSee('Mode lihat saja')->assertSee('Dodi Pembimbing Industri')->assertSee('Lihat foto bukti lebih besar')
+            ->assertDontSee('name="finalize"',false)->assertDontSee('Gunakan setoran ini');
+        $this->get(route('assessments.submissions.photo',$submission))->assertOk()->assertHeader('content-type','image/jpeg');
+        $otherTeacher=User::where('role','guru')->where('id','!=',$teacher->id)->firstOrFail();
+        $this->actingAs($otherTeacher)->get(route('assessments.student',$placement))->assertNotFound();
+        $this->get(route('assessments.submissions.photo',$submission))->assertNotFound();
+
         $coordinator = User::where('role','koordinator')->firstOrFail();
         DB::table('internship_rosters')->where('id',$placement->internship_roster_id)
             ->update(['internship_ends_at'=>now('Asia/Jakarta')->subDay()->toDateString()]);
@@ -103,6 +115,17 @@ class StudentAssessmentSubmissionTest extends TestCase
         $this->get(route('assessments.evidence.index',$assessment))->assertOk()
             ->assertSee('Setoran siswa yang pernah diterapkan')->assertSee('Lihat foto sumber siswa')
             ->assertSee('Lihat bukti industri lebih besar')->assertSee('data-evidence-preview',false);
+
+        $evidence=$assessment->evidence()->firstOrFail();
+        $this->actingAs($teacher)->get(route('assessments.student',$placement))->assertOk()
+            ->assertSee('Mode lihat saja')->assertSee('bukti-koordinator.png')->assertSee('Nilai resmi:')
+            ->assertDontSee('Sahkan Nilai')->assertDontSee('Unggah Bukti Tambahan');
+        $this->get(route('assessments.evidence.index',$assessment))->assertOk()
+            ->assertSee('Informasi penilaian yang dicatat dari industri')->assertSee('Lihat bukti industri lebih besar')
+            ->assertDontSee('Unggah Bukti Industri')->assertDontSee('Sahkan setelah bukti diperiksa');
+        $this->get(route('assessments.evidence.download',$evidence))->assertOk();
+        $this->post(route('assessments.evidence.store',$assessment),[])->assertForbidden();
+        $this->put(route('assessments.approve',$assessment),[])->assertForbidden();
 
         $this->actingAs($student)->get(route('assessments.student',$placement))->assertForbidden();
     }

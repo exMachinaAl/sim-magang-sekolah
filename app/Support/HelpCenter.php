@@ -217,7 +217,7 @@ class HelpCenter
                 'steps' => ['Daftar siswa langsung tampil per halaman; gunakan nama/NIS, tahun, atau jurusan untuk mempersempit hasil.', 'Isi setiap aspek persis sesuai sumber industri; jangan memilih nilai dari daftar siswa massal.', 'Gunakan satu tombol Simpan Penilaian: tanpa checkbox menjadi draf, dengan checkbox menjadi nilai sah dan diarahkan ke persiapan sertifikat.'],
                 'roles' => [
                     'siswa' => 'Siswa dapat menyetor nilai dari lembar industri sesuai kriteria dan foto opsional; setoran belum resmi sampai diterapkan koordinator.',
-                    'guru' => 'Guru tidak berwenang memasukkan atau mengesahkan nilai industri.',
+                    'guru' => 'Guru dapat melihat setoran, foto, hasil akhir, dan bukti siswa yang ditugaskan, tetapi tidak dapat menerapkan, mengubah, atau mengesahkan nilai.',
                     'koordinator' => 'ID koordinator pencatat dan pengesah disimpan untuk audit.',
                     'admin' => 'Admin memeriksa sistem; pemberian dan input nilai bukan wewenang admin.',
                 ],
