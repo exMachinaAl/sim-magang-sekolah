@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{InternshipRoster, Student, User};
+use App\Models\{AuditLog, InternshipRoster, Student, User};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -111,6 +111,62 @@ class RosterImportUiTest extends TestCase
         $this->assertNull($roster->internship_ends_at);
         $this->assertNull($roster->schedule_source);
         $this->assertSame('not_internship', $roster->internship_status);
+    }
+
+    public function test_reimport_merges_only_filled_cells_and_reports_true_noop_rows(): void
+    {
+        $this->actingAs($this->coordinator());
+        $initial="nis,nisn,nama,email,kelas,jurusan,tanggal_lahir,catatan,status_magang,mulai_pkl,selesai_pkl\n"
+            ."12816/596.030,009900,Siswa Merge,merge@example.test,XI TOI 2,TOI,2008-11-07,Catatan lama,magang,2027-07-01,2027-12-31\n";
+        $this->upload($initial)->assertSessionHasNoErrors();
+
+        $partial="nis,nisn,nama,email,kelas,jurusan,tanggal_lahir,catatan,status_magang,mulai_pkl,selesai_pkl\n"
+            ."12816/596.030,,,,,,,,,,2028-01-31\n";
+        $this->upload($partial)->assertSessionHasNoErrors()->assertSessionHas('success',fn($message)=>str_contains($message,'1 siswa diperbarui'));
+
+        $student=Student::with('user')->where('nis','12816/596.030')->firstOrFail();
+        $roster=InternshipRoster::where('nis','12816/596.030')->firstOrFail();
+        $this->assertSame('12816596030',$student->user->username);
+        $this->assertSame('009900',$student->nisn);
+        $this->assertSame('merge@example.test',$student->user->email);
+        $this->assertSame('Siswa Merge',$student->user->name);
+        $this->assertSame('XI TOI 2',$roster->class_name);
+        $this->assertSame('Teknik Otomasi Industri',$roster->major);
+        $this->assertSame('Catatan lama',$roster->notes);
+        $this->assertSame('2027-07-01',$roster->internship_starts_at->toDateString());
+        $this->assertSame('2028-01-31',$roster->internship_ends_at->toDateString());
+
+        $auditCount=AuditLog::where('action','internship_roster.imported')->count();
+        $updatedAt=$roster->updated_at;
+        $blank="nis,nama,kelas,jurusan,catatan\n12816/596.030,,,,\n";
+        $this->upload($blank)->assertSessionHasNoErrors()->assertSessionHas('success',fn($message)=>str_contains($message,'1 baris tidak berubah'));
+        $this->assertSame($auditCount,AuditLog::where('action','internship_roster.imported')->count());
+        $this->assertTrue($updatedAt->equalTo($roster->fresh()->updated_at));
+        $this->assertSame('Catatan lama',$roster->fresh()->notes);
+    }
+
+    public function test_reimport_rejects_identity_name_conflict_before_any_merge(): void
+    {
+        $this->actingAs($this->coordinator());
+        $this->upload("nis,nama,kelas,jurusan,tanggal_lahir\n12816/596.030,Nama Benar,XI TOI 2,TOI,2008-11-07\n")
+            ->assertSessionHasNoErrors();
+
+        $this->upload("nis,nama,kelas,jurusan\n12816/596.030,Nama Orang Lain,,\n")
+            ->assertSessionHasErrors('roster_file');
+        $this->assertSame('Nama Benar',Student::firstOrFail()->user->name);
+        $this->assertDatabaseCount('students',1);
+    }
+
+    public function test_import_rejects_duplicate_nisn_without_partial_writes(): void
+    {
+        $this->actingAs($this->coordinator());
+        $csv="nis,nisn,nama,kelas,jurusan,tanggal_lahir\n"
+            ."100/01,009900,Siswa Satu,XI TOI 2,TOI,2008-11-07\n"
+            ."101/01,009900,Siswa Dua,XI TOI 2,TOI,2008-11-07\n";
+
+        $this->upload($csv)->assertSessionHasErrors('roster_file');
+        $this->assertDatabaseCount('students',0);
+        $this->assertDatabaseCount('internship_rosters',0);
     }
 
     public function test_empty_duplicate_malformed_and_invalid_date_imports_are_rejected_without_writes(): void

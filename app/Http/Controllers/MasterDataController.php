@@ -38,7 +38,7 @@ class MasterDataController {
  }
  public function storeStudent(Request $r){
   $d=$r->validate(['name'=>'required|string|max:150','email'=>'nullable|email|unique:users,email',
-   'birth_date'=>'required|date_format:Y-m-d|before:today','nis'=>'required|string|max:30|unique:students,nis','nisn'=>'nullable|max:30','class_name'=>'required|max:70',
+   'birth_date'=>'required|date_format:Y-m-d|before:today','nis'=>'required|string|max:30|unique:students,nis','nisn'=>'nullable|max:30|unique:students,nisn','class_name'=>'required|max:70',
    'academic_year'=>['nullable','regex:/^\d{4}\/\d{4}$/'],'major'=>['required',Rule::in(InternshipRoster::officialMajors())]]);
   app(\App\Support\StudentEnrollment::class)->register($d,$r->user()->id);
   return back()->with('success','Data dan akun siswa dibuat. Username adalah NIS tanpa tanda baca; password awal tanggal lahir (DDMMYYYY).');
@@ -48,7 +48,7 @@ class MasterDataController {
    'email'=>['nullable','email',Rule::unique('users','email')->ignore($student->user_id)],
    'birth_date'=>'nullable|date_format:Y-m-d|before:today',
    'nis'=>['required','max:30',Rule::unique('students','nis')->ignore($student->id)],
-   'nisn'=>'nullable|max:30','class_name'=>'required|max:70','major'=>['required',Rule::in(InternshipRoster::officialMajors())]]);
+   'nisn'=>['nullable','max:30',Rule::unique('students','nisn')->ignore($student->id)],'class_name'=>'required|max:70','major'=>['required',Rule::in(InternshipRoster::officialMajors())]]);
   DB::transaction(function()use($d,$student){
    $student=Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
    if ($d['nis'] !== $student->nis && InternshipRoster::where('nis',$d['nis'])->exists()) {

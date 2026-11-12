@@ -130,7 +130,7 @@ class HelpCenter
                 'key' => 'data-siswa',
                 'title' => 'Data siswa',
                 'summary' => 'Kelola identitas master siswa dan impor batch. Username siswa memakai seluruh angka NIS tanpa tanda baca; NIS asli tetap disimpan utuh. Tanggal lahir menjadi kata sandi awal.',
-                'steps' => ['Pilih periode; default mengikuti tag aktif terbaru, sedangkan Semua Periode menampilkan setiap akun siswa satu kali beserta riwayatnya.', 'Cari siswa berdasarkan nama/NIS.', 'Gunakan template XLSX contoh agar tanggal tetap YYYY-MM-DD dan NIS tetap berupa teks; CSV lama tetap dapat diimpor.', 'Edit master memperbarui profil dan roster terbaru, bukan kelas/jurusan pada arsip periode lama.'],
+                'steps' => ['Pilih periode; default mengikuti tag aktif terbaru, sedangkan Semua Periode menampilkan setiap akun siswa satu kali beserta riwayatnya.', 'Cari siswa berdasarkan nama/NIS.', 'Gunakan template XLSX contoh agar tanggal tetap YYYY-MM-DD dan NIS tetap berupa teks; CSV lama tetap dapat diimpor.', 'Saat mengimpor ulang, hanya sel berisi yang digabung; sel kosong mempertahankan data lama.', 'Edit master memperbarui profil dan roster terbaru, bukan kelas/jurusan pada arsip periode lama.'],
             ],
             'internships.*' => [
                 'key' => 'kontrol-pkl',

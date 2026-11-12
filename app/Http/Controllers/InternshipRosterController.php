@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{InternshipPeriod, InternshipRoster, InternshipScheduleBatch, Student};
-use App\Support\{Audit, StudentEnrollment};
+use App\Models\{InternshipPeriod, InternshipRoster, InternshipScheduleBatch, Student, User};
+use App\Support\{Audit, StudentEnrollment, StudentLogin};
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -275,9 +275,41 @@ class InternshipRosterController
             throw ValidationException::withMessages(['roster_file' => 'Satu impor dibatasi maksimal 5.000 siswa.']);
         }
 
+        $identityRows = collect($rows)->map(function (array $row) use ($data): array {
+            return [
+                'nis'=>trim($row['nis'] ?? ''),
+                'academic_year'=>trim($row['tahun_ajaran'] ?? '') ?: $data['academic_year'],
+                'email'=>trim($row['email'] ?? ''),
+                'nisn'=>trim($row['nisn'] ?? ''),
+            ];
+        });
+        $studentCache = [];
+        $rosterCache = [];
+        $emailOwners = [];
+        $nisnOwners = [];
+        $identityRows->pluck('nis')->filter()->unique()->chunk(500)->each(function ($nisValues) use (&$studentCache): void {
+            foreach (Student::with('user')->whereIn('nis', $nisValues)->get() as $student) $studentCache[$student->nis] = $student;
+        });
+        $years = $identityRows->pluck('academic_year')->filter()->unique()->values();
+        $identityRows->pluck('nis')->filter()->unique()->chunk(500)->each(function ($nisValues) use ($years, &$rosterCache): void {
+            foreach (InternshipRoster::whereIn('academic_year', $years)->whereIn('nis', $nisValues)->get() as $roster) {
+                $rosterCache[$roster->academic_year.'|'.$roster->nis] = $roster;
+            }
+        });
+        $identityRows->pluck('email')->filter()->unique()->chunk(500)->each(function ($emails) use (&$emailOwners): void {
+            foreach (User::whereIn('email', $emails)->get(['id','email']) as $user) $emailOwners[$user->email] = $user->id;
+        });
+        $identityRows->pluck('nisn')->filter()->unique()->chunk(500)->each(function ($nisnValues) use (&$nisnOwners): void {
+            foreach (Student::whereIn('nisn', $nisnValues)->get(['id','nisn']) as $student) $nisnOwners[$student->nisn] = $student->id;
+        });
+
         $prepared = [];
         $errors = [];
         $seen = [];
+        $seenUsernames = [];
+        $seenEmails = [];
+        $seenNisn = [];
+        $periodsByName = InternshipPeriod::query()->get()->keyBy('name');
         foreach ($rows as $index => $row) {
             $line = $index + 2;
             if (! array_filter($row, fn ($value) => trim((string) $value) !== '')) {
@@ -288,40 +320,89 @@ class InternshipRosterController
             $key = $academicYear.'|'.$nis;
             if (isset($seen[$key])) $errors[] = "Baris {$line}: NIS {$nis} pada tahun {$academicYear} berulang (sebelumnya baris {$seen[$key]}).";
             $seen[$key] = $line;
-            $name = trim($row['nama'] ?? '');
-            $className = trim($row['kelas'] ?? '');
+            if ($nis !== '') {
+                try {
+                    $username = StudentLogin::fromNis($nis);
+                    if (isset($seenUsernames[$username]) && $seenUsernames[$username]['nis'] !== $nis) {
+                        $errors[] = "Baris {$line}: NIS {$nis} menghasilkan username {$username} yang sama dengan NIS {$seenUsernames[$username]['nis']} pada baris {$seenUsernames[$username]['line']}.";
+                    } else {
+                        $seenUsernames[$username] = ['nis'=>$nis, 'line'=>$line];
+                    }
+                } catch (ValidationException $exception) {
+                    $errors[] = "Baris {$line}: ".implode(' ', $exception->validator->errors()->all());
+                }
+            }
+            $existingStudent = $studentCache[$nis] ?? null;
+            $existingRoster = $rosterCache[$key] ?? null;
+            $rawName = trim($row['nama'] ?? '');
+            $rawClassName = trim($row['kelas'] ?? '');
             $rawMajor = trim($row['jurusan'] ?? '');
-            $major = $this->normalizeMajor($rawMajor);
+            $name = $rawName ?: ($existingStudent?->user?->name ?: $existingRoster?->name);
+            $className = $rawClassName ?: ($existingRoster?->class_name ?: $existingStudent?->class_name);
+            $major = $rawMajor !== '' ? $this->normalizeMajor($rawMajor) : ($existingRoster?->major ?: $existingStudent?->major);
             $rawStatus = trim($row['status_magang'] ?? '');
             $status = $rawStatus === '' ? null : $this->normalizeStatus($rawStatus);
             if (! preg_match('/^\d{4}\/\d{4}$/', $academicYear)) $errors[] = "Baris {$line}: tahun_ajaran tidak valid.";
             if ($nis === '' || mb_strlen($nis) > 30) $errors[] = "Baris {$line}: NIS wajib dan maksimal 30 karakter.";
-            if ($name === '') $errors[] = "Baris {$line}: nama wajib diisi.";
-            if ($className === '') $errors[] = "Baris {$line}: kelas wajib diisi.";
-            if ($rawMajor === '') {
-                $errors[] = "Baris {$line}: jurusan wajib diisi.";
-            } elseif ($major === null) {
+            if (! $existingStudent && $name === '') $errors[] = "Baris {$line}: nama wajib diisi untuk siswa baru.";
+            if (! $existingRoster && ! $existingStudent && $className === '') $errors[] = "Baris {$line}: kelas wajib diisi untuk siswa baru.";
+            if (! $existingRoster && ! $existingStudent && $rawMajor === '') {
+                $errors[] = "Baris {$line}: jurusan wajib diisi untuk siswa baru.";
+            } elseif ($rawMajor !== '' && $major === null) {
                 $errors[] = "Baris {$line}: jurusan '{$rawMajor}' tidak termasuk delapan jurusan resmi.";
             }
+            if ($existingStudent && $rawName !== '') {
+                $incomingName = preg_replace('/\s+/', ' ', mb_strtoupper($rawName));
+                $storedName = preg_replace('/\s+/', ' ', mb_strtoupper(trim($existingStudent->user->name)));
+                if ($incomingName !== $storedName) {
+                    $errors[] = "Baris {$line}: NIS {$nis} sudah dimiliki {$existingStudent->user->name}; nama '{$rawName}' tidak digabung otomatis.";
+                }
+            }
             if ($rawStatus !== '' && $status === null) $errors[] = "Baris {$line}: status_magang tidak dikenali.";
-            $email = trim($row['email'] ?? '');
-            if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Baris {$line}: email tidak valid.";
+            $rawEmail = trim($row['email'] ?? '');
+            $email = $rawEmail ?: ($existingStudent?->user?->email ?: $existingRoster?->email);
+            if ($email !== null && $email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Baris {$line}: email tidak valid.";
+            if ($rawEmail !== '' && isset($seenEmails[$rawEmail]) && $seenEmails[$rawEmail]['nis'] !== $nis) {
+                $errors[] = "Baris {$line}: email {$rawEmail} juga digunakan NIS {$seenEmails[$rawEmail]['nis']} pada baris {$seenEmails[$rawEmail]['line']}.";
+            } elseif ($rawEmail !== '') {
+                $seenEmails[$rawEmail] = ['nis'=>$nis, 'line'=>$line];
+            }
+            if ($rawEmail !== '' && isset($emailOwners[$rawEmail]) && $emailOwners[$rawEmail] !== $existingStudent?->user_id) {
+                $errors[] = "Baris {$line}: email {$rawEmail} sudah digunakan akun lain.";
+            }
 
             $periodId = null;
             $periodName = trim($row['periode'] ?? '');
             if ($periodName !== '') {
-                $periodId = InternshipPeriod::where('name', $periodName)->value('id');
-                if (! $periodId) $errors[] = "Baris {$line}: periode '{$periodName}' tidak ditemukan.";
-                elseif (InternshipPeriod::find($periodId)->academic_year !== $academicYear) $errors[] = "Baris {$line}: tag periode harus sesuai tahun_ajaran.";
+                $period = $periodsByName->get($periodName);
+                $periodId = $period?->id;
+                if (! $period) $errors[] = "Baris {$line}: periode '{$periodName}' tidak ditemukan.";
+                elseif ($period->academic_year !== $academicYear) $errors[] = "Baris {$line}: tag periode harus sesuai tahun_ajaran.";
             }
             $startsAt = trim($row['mulai_pkl'] ?? '') ?: null;
             $endsAt = trim($row['selesai_pkl'] ?? '') ?: null;
-            if (($startsAt && ! $endsAt) || (! $startsAt && $endsAt)) $errors[] = "Baris {$line}: mulai_pkl dan selesai_pkl harus diisi berpasangan.";
+            $effectiveStartsAt = $startsAt ?: $existingRoster?->internship_starts_at?->toDateString();
+            $effectiveEndsAt = $endsAt ?: $existingRoster?->internship_ends_at?->toDateString();
+            if (($startsAt || $endsAt) && (! $effectiveStartsAt || ! $effectiveEndsAt)) $errors[] = "Baris {$line}: tanggal yang belum ada di database harus dilengkapi; mulai_pkl dan selesai_pkl membentuk satu pasangan.";
+            $rawNisn = trim($row['nisn'] ?? '');
+            $nisn = $rawNisn ?: ($existingStudent?->nisn ?: $existingRoster?->nisn);
+            if ($rawNisn !== '' && isset($seenNisn[$rawNisn]) && $seenNisn[$rawNisn]['nis'] !== $nis) {
+                $errors[] = "Baris {$line}: NISN {$rawNisn} juga digunakan NIS {$seenNisn[$rawNisn]['nis']} pada baris {$seenNisn[$rawNisn]['line']}.";
+            } elseif ($rawNisn !== '') {
+                $seenNisn[$rawNisn] = ['nis'=>$nis, 'line'=>$line];
+            }
+            if ($rawNisn !== '' && isset($nisnOwners[$rawNisn]) && $nisnOwners[$rawNisn] !== $existingStudent?->id) {
+                $errors[] = "Baris {$line}: NISN {$rawNisn} sudah digunakan siswa lain.";
+            }
+            $rawNotes = trim($row['catatan'] ?? '');
+            $notes = $rawNotes ?: $existingRoster?->notes;
+            $birthDate = trim($row['tanggal_lahir'] ?? '') ?: null;
             $validation = Validator::make([
-                'nama' => $name, 'kelas' => $className, 'nisn' => trim($row['nisn'] ?? ''),
-                'email' => $email, 'catatan' => trim($row['catatan'] ?? ''),
-                'tanggal_lahir' => trim($row['tanggal_lahir'] ?? '') ?: null,
-                'mulai_pkl' => $startsAt, 'selesai_pkl' => $endsAt,
+                'nama' => $name, 'kelas' => $className, 'nisn' => $nisn,
+                'email' => $email, 'catatan' => $notes,
+                'tanggal_lahir' => $birthDate,
+                'mulai_pkl' => ($startsAt || $endsAt) ? $effectiveStartsAt : null,
+                'selesai_pkl' => ($startsAt || $endsAt) ? $effectiveEndsAt : null,
             ], [
                 'nama' => 'required|string|max:150', 'kelas' => 'required|string|max:70',
                 'nisn' => 'nullable|string|max:30', 'email' => 'nullable|email|max:255',
@@ -333,12 +414,17 @@ class InternshipRosterController
             foreach ($validation->errors()->all() as $error) $errors[] = "Baris {$line}: {$error}";
             $prepared[] = [
                 '_line' => $line,
-                'birth_date' => trim($row['tanggal_lahir'] ?? '') ?: null,
-                'academic_year' => $academicYear, 'nis' => $nis, 'nisn' => trim($row['nisn'] ?? '') ?: null,
+                '_provided' => [
+                    'name'=>$rawName !== '', 'class_name'=>$rawClassName !== '', 'major'=>$rawMajor !== '',
+                    'nisn'=>$rawNisn !== '', 'email'=>$rawEmail !== '', 'notes'=>$rawNotes !== '',
+                    'internship_period_id'=>$periodName !== '', 'internship_starts_at'=>$startsAt !== null,
+                    'internship_ends_at'=>$endsAt !== null, 'internship_status'=>$rawStatus !== '',
+                ],
+                'birth_date' => $birthDate,
+                'academic_year' => $academicYear, 'nis' => $nis, 'nisn' => $nisn ?: null,
                 'name' => $name, 'email' => $email ?: null, 'class_name' => $className, 'major' => $major ?: $rawMajor,
                 'internship_status' => $status, 'internship_period_id' => $periodId,
-                'internship_starts_at' => $startsAt, 'internship_ends_at' => $endsAt,
-                'notes' => trim($row['catatan'] ?? '') ?: null,
+                'internship_starts_at' => $startsAt, 'internship_ends_at' => $endsAt, 'notes' => $notes,
             ];
         }
         if ($errors) {
@@ -350,24 +436,27 @@ class InternshipRosterController
 
         $created = 0;
         $updated = 0;
-        DB::transaction(function () use ($prepared, $request, &$created, &$updated): void {
+        $unchanged = 0;
+        DB::transaction(function () use ($prepared, $request, &$created, &$updated, &$unchanged): void {
             foreach ($prepared as $row) {
+                $provided = $row['_provided'];
                 try {
                     $student = app(StudentEnrollment::class)->enroll($row);
                 } catch (ValidationException $exception) {
                     throw ValidationException::withMessages(['roster_file' => 'Baris '.$row['_line'].' (NIS '.$row['nis'].'): '.implode(' ', $exception->validator->errors()->all())]);
                 }
-                unset($row['birth_date'], $row['_line']);
-                $row['name'] = $student->user->name;
-                $row['email'] = $student->user->email;
-                $row['nisn'] = $student->nisn;
+                if ($provided['email'] && $student->user->email !== $row['email']) $student->user->update(['email'=>$row['email']]);
+                $studentUpdates = [];
+                if ($provided['nisn'] && $student->nisn !== $row['nisn']) $studentUpdates['nisn'] = $row['nisn'];
+                if ($studentUpdates) $student->update($studentUpdates);
+                unset($row['birth_date'], $row['_line'], $row['_provided']);
                 $status = $row['internship_status'];
                 unset($row['internship_status']);
-                $existing = InternshipRoster::where('academic_year', $row['academic_year'])->where('nis', $row['nis'])->first();
-                $values = $row + [
-                    'student_id' => $student->id,
-                    'updated_by' => $request->user()->id,
-                ];
+                $existing = InternshipRoster::where('academic_year', $row['academic_year'])->where('nis', $row['nis'])->lockForUpdate()->first();
+                $values = $existing ? ['student_id'=>$student->id] : $row + ['student_id'=>$student->id];
+                foreach (['name','email','nisn','class_name','major','notes','internship_period_id','internship_starts_at','internship_ends_at'] as $field) {
+                    if ($existing && ($provided[$field] ?? false)) $values[$field] = $row[$field];
+                }
                 if ($status !== null) {
                     $values['internship_status'] = $status;
                     if ($status !== 'internship') $values['internship_period_id'] = null;
@@ -376,7 +465,7 @@ class InternshipRosterController
                 } else {
                     unset($values['internship_period_id']);
                 }
-                if ($row['internship_starts_at'] && $row['internship_ends_at']) {
+                if ($provided['internship_starts_at'] || $provided['internship_ends_at']) {
                     $values['internship_status'] = 'internship';
                     $values['schedule_source'] = 'individual_override';
                     $values['schedule_batch_id'] = null;
@@ -388,17 +477,29 @@ class InternshipRosterController
                 } elseif ($existing) {
                     unset($values['internship_starts_at'], $values['internship_ends_at']);
                 }
-                $roster = InternshipRoster::updateOrCreate(
-                    ['academic_year' => $row['academic_year'], 'nis' => $row['nis']],
-                    $values
-                );
+                if ($existing) {
+                    $existing->fill($values);
+                    if ($existing->isDirty()) {
+                        $existing->updated_by = $request->user()->id;
+                        $existing->save();
+                        $roster = $existing;
+                        $updated++;
+                        Audit::record('internship_roster.imported', $roster, ['created'=>false, 'changed_fields'=>array_keys($roster->getChanges())]);
+                    } else {
+                        $roster = $existing;
+                        $unchanged++;
+                    }
+                } else {
+                    $values['updated_by'] = $request->user()->id;
+                    $roster = InternshipRoster::create($values);
+                    $created++;
+                    Audit::record('internship_roster.imported', $roster, ['created'=>true]);
+                }
                 app(StudentEnrollment::class)->syncLatestRoster($student);
-                $existing ? $updated++ : $created++;
-                Audit::record('internship_roster.imported', $roster, ['created' => ! $existing]);
             }
         });
 
-        return back()->with('success', "Impor selesai: {$created} siswa baru dan {$updated} siswa diperbarui.");
+        return back()->with('success', "Impor selesai: {$created} siswa baru, {$updated} siswa diperbarui, dan {$unchanged} baris tidak berubah.");
     }
 
     public function export(Request $request)

@@ -47,6 +47,7 @@ class StudentEnrollment
                 'nis'=>'required|string|max:30', 'name'=>'required|string|max:150',
                 'birth_date'=>'required|date_format:Y-m-d|before:today',
                 'class_name'=>'required|string|max:70', 'major'=>'required|string|max:120',
+                'nisn'=>'nullable|string|max:30|unique:students,nisn',
                 'email'=>'nullable|email|max:255|unique:users,email',
             ], ['birth_date.required'=>'Tanggal lahir wajib diisi untuk membuat akun NIS '.$data['nis'].'.'])->validate();
             if (User::where('username', $username)->exists()) {

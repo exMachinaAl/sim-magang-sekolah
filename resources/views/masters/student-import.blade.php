@@ -24,9 +24,9 @@
                 <tr><td>jurusan</td><td>Wajib, gunakan salah satu jurusan di bawah. Singkatan TITL, TKI, DKV, APL, TKJ, TPTUP, TOI dan Kuliner juga diterima.</td></tr>
                 <tr><td>tanggal_lahir</td><td>Wajib untuk akun baru. Contoh 2008-11-07 menghasilkan password awal 07112008. Tanggal lahir akun lama yang diisi harus cocok dengan profil.</td></tr>
                 <tr><td>tahun_ajaran</td><td>Opsional per baris; kosong mengikuti pilihan di atas. Contoh {{ $academicYear }}.</td></tr>
-                <tr><td>nisn, email, catatan</td><td>Opsional. Email akun baru tidak boleh sudah dipakai akun lain. Catatan kosong pada impor ulang mengosongkan catatan roster.</td></tr>
+                <tr><td>nisn, email, catatan</td><td>Opsional. NISN yang diisi harus unik; email akun baru tidak boleh sudah dipakai akun lain. Pada impor ulang, sel kosong mempertahankan nilai lama.</td></tr>
                 <tr><td>status_magang</td><td>Hanya template jadwal: magang / tidak_magang / belum_ditentukan. Kosong mempertahankan status lama; siswa baru menjadi belum_ditentukan.</td></tr>
-                <tr><td>mulai_pkl, selesai_pkl</td><td>Hanya template jadwal: YYYY-MM-DD, wajib berpasangan. Jadwal terisi menandai siswa magang dan menjadi pengecualian individual, bukan batch jurusan. Status tidak_magang atau belum_ditentukan tanpa tanggal menghapus jadwal lama.</td></tr>
+                <tr><td>mulai_pkl, selesai_pkl</td><td>Hanya template jadwal: YYYY-MM-DD. Siswa baru wajib mengisi pasangan lengkap; pada impor ulang satu sisi boleh diubah jika pasangan lama sudah tersedia. Jadwal terisi menandai siswa magang dan menjadi pengecualian individual. Status tidak_magang atau belum_ditentukan tanpa tanggal menghapus jadwal lama.</td></tr>
             </tbody></table></div>
             <ul>@foreach($majors as $major)<li>{{ $major }}</li>@endforeach</ul>
         </details>
