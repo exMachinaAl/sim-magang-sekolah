@@ -120,21 +120,24 @@ class AssessmentController
     public function store(Request $request)
     {
         abort_unless($request->user()->isRole('koordinator'), 403);
+        $finalize = $request->boolean('finalize');
+        $finalScoreRequired = $finalize || $request->input('intent') === 'submitted';
         $data = $request->validate([
             'placement_id' => ['required', 'integer'],
             'template_id' => ['required', 'integer', 'exists:assessment_templates,id'],
             'submission_id' => ['nullable','integer','exists:assessment_submissions,id'],
             'revision' => ['required', 'integer', 'min:0'],
             'intent' => ['required', 'in:draft,submitted'],
+            'finalize' => ['nullable', 'boolean'],
             'industry_assessor' => ['required', 'string', 'max:150'],
             'assessed_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'final_score' => ['nullable', 'required_if:intent,submitted', 'numeric', 'between:0,100'],
+            'final_score' => [$finalScoreRequired ? 'required' : 'nullable', 'numeric', 'between:0,100'],
             'final_score_reason' => ['nullable', 'string', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'values' => ['required', 'array'],
         ]);
         Access::placement($request->user(), $data['placement_id']);
-        DB::transaction(function () use ($request, $data) {
+        DB::transaction(function () use ($request, $data, $finalize) {
             $placement = Placement::whereKey($data['placement_id'])->lockForUpdate()->firstOrFail();
             $existing = $placement->assessment;
             abort_if($existing?->status === 'approved', 403, 'Penilaian yang disahkan dikunci.');
@@ -188,16 +191,24 @@ class AssessmentController
                 'assessed_on' => $data['assessed_on'], 'assessor_id' => $request->user()->id,
                 'calculated_score' => $calculated, 'final_score' => $data['final_score'] ?? null,
                 'final_score_reason' => $data['final_score_reason'] ?? null,
-                'notes' => $data['notes'] ?? null, 'status' => $data['intent'],
-                'approved_by' => null, 'approved_at' => null, 'revision' => ($existing?->revision ?? 0) + 1,
+                'notes' => $data['notes'] ?? null, 'status' => $finalize ? 'approved' : $data['intent'],
+                'approved_by' => $finalize ? $request->user()->id : null,
+                'approved_at' => $finalize ? now() : null, 'revision' => ($existing?->revision ?? 0) + 1,
             ]);
             if ($submission) {
                 $submission->update(['status'=>'applied','applied_by'=>$request->user()->id,'applied_at'=>now()]);
                 Audit::record('assessment_submission.applied', $submission, ['assessment_id'=>$assessment->id,'coordinator_adjusted_values'=>$values != $submission->field_values]);
             }
-            Audit::record('assessment.'.$data['intent'], $assessment, ['before' => $before, 'values' => $values, 'calculated_score' => $calculated,
-                'final_score' => $assessment->final_score, 'submission_id'=>$submission?->id]);
+            Audit::record('assessment.'.($finalize?'approved':$data['intent']), $assessment, ['before' => $before, 'values' => $values, 'calculated_score' => $calculated,
+                'final_score' => $assessment->final_score, 'submission_id'=>$submission?->id,'validation_checkbox'=>$finalize]);
+            if ($finalize) {
+                Audit::record('assessment.reviewed',$assessment,['decision'=>'approved','revision'=>$assessment->revision,'method'=>'validation_checkbox']);
+            }
         });
+        if ($finalize) {
+            return redirect()->route('certificates.prepare',$data['placement_id'])
+                ->with('success','Nilai disimpan dan disahkan. Pilih desain serta lengkapi data sebelum membuat sertifikat.');
+        }
         return redirect()->route('assessments.student', $data['placement_id'])->with('success', 'Nilai industri dan ketentuan template tersimpan.');
     }
 

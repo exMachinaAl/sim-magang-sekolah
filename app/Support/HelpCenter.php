@@ -112,7 +112,7 @@ class HelpCenter
                 'key' => 'penilaian-siswa',
                 'title' => 'Penilaian per siswa',
                 'summary' => 'Seluruh bukti, nilai resmi, pengesahan, masa selesai PKL, dan kesiapan sertifikat siswa dipusatkan pada halaman ini.',
-                'steps' => ['Periksa alert waktu selesai PKL dan identitas penempatan.', 'Periksa thumbnail foto siswa; tekan gambar untuk overlay yang lebih besar, atau gunakan Unduh/Buka di tab lain.', 'Cocokkan bukti dengan sumber, lalu terapkan atau input manual ke nilai resmi.', 'Sahkan nilai setelah bukti sesuai, kemudian lanjutkan ke sertifikat dari bagian terakhir.'],
+                'steps' => ['Periksa alert waktu selesai PKL dan identitas penempatan.', 'Periksa thumbnail foto siswa; tekan gambar untuk overlay yang lebih besar, atau gunakan Unduh/Buka di tab lain.', 'Cocokkan bukti dengan sumber, lalu terapkan atau input manual ke nilai resmi.', 'Biarkan checkbox validasi kosong untuk menyimpan draf; centang hanya bila nilai sudah final agar langsung disahkan dan dilanjutkan ke persiapan sertifikat.'],
             ],
             'assessments.evidence.*' => [
                 'key' => 'bukti-penilaian',
@@ -214,7 +214,7 @@ class HelpCenter
                 'key' => 'penilaian',
                 'title' => 'Penilaian',
                 'summary' => 'Nilai berasal dari industri, dicatat dan disahkan koordinator berdasarkan template jurusan serta bukti yang tersedia.',
-                'steps' => ['Daftar siswa langsung tampil per halaman; gunakan nama/NIS, tahun, atau jurusan untuk mempersempit hasil.', 'Isi setiap aspek persis sesuai sumber industri; jangan memilih nilai dari daftar siswa massal.', 'Periksa hasil hitung, alasan nilai akhir, bukti, lalu sahkan.'],
+                'steps' => ['Daftar siswa langsung tampil per halaman; gunakan nama/NIS, tahun, atau jurusan untuk mempersempit hasil.', 'Isi setiap aspek persis sesuai sumber industri; jangan memilih nilai dari daftar siswa massal.', 'Gunakan satu tombol Simpan Penilaian: tanpa checkbox menjadi draf, dengan checkbox menjadi nilai sah dan diarahkan ke persiapan sertifikat.'],
                 'roles' => [
                     'siswa' => 'Siswa dapat menyetor nilai dari lembar industri sesuai kriteria dan foto opsional; setoran belum resmi sampai diterapkan koordinator.',
                     'guru' => 'Guru tidak berwenang memasukkan atau mengesahkan nilai industri.',

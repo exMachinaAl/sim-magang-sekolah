@@ -96,6 +96,36 @@ class AssessmentTemplateTest extends TestCase
         $this->assertStringContainsString('001/22.33',$html);
     }
 
+    public function test_single_save_button_uses_validation_checkbox_for_draft_or_direct_approval(): void
+    {
+        $coordinator=$this->actor('koordinator');
+        $this->actingAs($coordinator)->post(route('assessment-templates.store'),$this->templateData())->assertSessionHasNoErrors();
+        $template=AssessmentTemplate::firstOrFail();
+        $placement=$this->placement();
+        $this->get(route('assessments.student',[$placement,'template_id'=>$template->id]))->assertOk()
+            ->assertSee('name="finalize"',false)->assertSee('Nilai sudah diperiksa dan dinyatakan valid')
+            ->assertSee('Simpan Penilaian')->assertDontSee('Ajukan untuk Pengesahan');
+
+        $draft=array_replace($this->input($placement,$template),['intent'=>'draft']);
+        $this->post(route('assessments.store'),$draft)->assertSessionHasNoErrors()
+            ->assertRedirect(route('assessments.student',$placement));
+        $assessment=Assessment::firstOrFail();
+        $this->assertSame('draft',$assessment->status);
+        $this->assertNull($assessment->approved_by);
+        $this->assertNull($assessment->approved_at);
+
+        $this->post(route('assessments.store'),array_replace($draft,['revision'=>1,'finalize'=>'1']))
+            ->assertSessionHasNoErrors()->assertRedirect(route('certificates.prepare',$placement));
+        $assessment->refresh();
+        $this->assertSame('approved',$assessment->status);
+        $this->assertSame($coordinator->id,$assessment->approved_by);
+        $this->assertNotNull($assessment->approved_at);
+        $this->assertDatabaseHas('audit_logs',['action'=>'assessment.approved','subject_id'=>$assessment->id,'user_id'=>$coordinator->id]);
+        $this->assertDatabaseHas('audit_logs',['action'=>'assessment.reviewed','subject_id'=>$assessment->id,'user_id'=>$coordinator->id]);
+        $this->get(route('certificates.prepare',$placement))->assertOk()
+            ->assertSee('Penilai industri: Bapak Industri')->assertSee('Belum ada desain yang kompatibel');
+    }
+
     public function test_wrong_major_bad_values_and_stale_revision_cannot_overwrite_assessment(): void
     {
         $this->actingAs($this->actor('koordinator'))->post(route('assessment-templates.store'),$this->templateData());
