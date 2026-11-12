@@ -96,8 +96,9 @@ class AssessmentSubmissionController
         abort_unless(is_string($bytes) && strlen($bytes) === $submission->photo_size
             && hash_equals($submission->photo_sha256, hash('sha256', $bytes)), 409, 'Integritas foto bukti gagal.');
         $extension = $submission->photo_mime === 'image/png' ? 'png' : 'jpg';
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
         return response($bytes, 200, ['Content-Type'=>$submission->photo_mime,
-            'Content-Disposition'=>'inline; filename="setoran-nilai-'.$submission->id.'.'.$extension.'"',
+            'Content-Disposition'=>$disposition.'; filename="setoran-nilai-'.$submission->id.'.'.$extension.'"',
             'Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff',
             'Content-Security-Policy'=>"sandbox; default-src 'none'; img-src 'self' data:"]);
     }

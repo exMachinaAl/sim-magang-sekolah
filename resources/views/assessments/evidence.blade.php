@@ -45,7 +45,9 @@
 <div class="card"><h2>Setoran siswa yang pernah diterapkan</h2><p>Bagian ini mempertahankan asal input siswa. Nilai resmi tetap informasi penilaian koordinator di atas.</p>
 @foreach($studentSubmissions as $submission)<details><summary>Setoran #{{ $submission->id }} · {{ $submission->created_at->format('d/m/Y H:i') }} · nilai {{ $submission->final_score }}</summary>
 <p>Dikirim oleh {{ $submission->submitter->name }} (ID {{ $submission->submitted_by }}) dan diterapkan oleh {{ $submission->applier?->name ?? 'Akun nonaktif' }} (ID {{ $submission->applied_by ?? '—' }}).<br>Penilai industri: {{ $submission->industry_assessor }} · hasil hitung {{ $submission->calculated_score }}.</p>
-@if($submission->hasPhoto())<a class="btn btn-secondary" target="_blank" rel="noopener" href="{{ route('assessments.submissions.photo',$submission) }}">Lihat foto sumber siswa</a>@else<p class="small muted">Setoran ini tidak menyertakan foto; pemeriksaan dapat berasal dari jurnal fisik.</p>@endif
+@if($submission->hasPhoto())
+@include('partials.assessment-image-preview',['previewUrl'=>route('assessments.submissions.photo',$submission),'downloadUrl'=>route('assessments.submissions.photo',[$submission,'download'=>1]),'title'=>'Foto sumber setoran #'.$submission->id.' · '.$submission->photo_original_name,'actionLabel'=>'Lihat foto sumber siswa lebih besar'])
+@else<p class="small muted">Setoran ini tidak menyertakan foto; pemeriksaan dapat berasal dari jurnal fisik.</p>@endif
 </details>@endforeach</div>
 @endif
 
@@ -63,7 +65,10 @@
 @forelse($items as $item)<div style="padding:12px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere">
 <strong>{{ $item->original_name }}</strong><p>{{ number_format($item->size/1024,1) }} KB · {{ $item->mime }}<br>Diunggah {{ $item->created_at->format('d/m/Y H:i') }} oleh {{ $item->uploader->name }} (ID {{ $item->uploaded_by }})<br>Versi saat unggah: {{ $item->assessment_revision }} · {{ $statusLabels[$item->assessment_status] ?? $item->assessment_status }}</p>
 <p style="white-space:pre-wrap">{{ $item->note }}</p>
-<a class="btn btn-secondary" href="{{ route('assessments.evidence.download',$item) }}">Unduh Bukti #{{ $item->id }}</a></div>
+@if(str_starts_with($item->mime,'image/'))
+@include('partials.assessment-image-preview',['previewUrl'=>route('assessments.evidence.download',[$item,'inline'=>1]),'downloadUrl'=>route('assessments.evidence.download',$item),'title'=>'Bukti industri #'.$item->id.' · '.$item->original_name,'actionLabel'=>'Lihat bukti industri lebih besar'])
+@else<a class="btn btn-secondary" href="{{ route('assessments.evidence.download',$item) }}">Unduh Bukti PDF #{{ $item->id }}</a>@endif</div>
 @empty<p>Belum ada bukti industri yang dilampirkan. Nilai di atas tetap merupakan catatan koordinator dan belum dianggap memiliki bukti dokumen.</p>@endforelse
 @include('partials.pager')</div>
+@include('partials.assessment-image-lightbox')
 @endsection

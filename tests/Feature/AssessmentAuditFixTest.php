@@ -55,7 +55,11 @@ class AssessmentAuditFixTest extends TestCase
         $download=$this->get(route('assessments.evidence.download',$e))->assertOk()->assertHeader('X-Content-Type-Options','nosniff');
         $this->assertSame($e->sha256,hash('sha256',$download->getContent()));
         $this->assertStringContainsString('attachment;',$download->headers->get('Content-Disposition'));
-        $this->get(route('assessments.evidence.index',$a))->assertOk()->assertSee('Lembar nilai industri untuk pengujian.');
+        $inline=$this->get(route('assessments.evidence.download',[$e,'inline'=>1]))->assertOk();
+        $this->assertSame($download->getContent(),$inline->getContent());
+        $this->assertStringContainsString('inline;',$inline->headers->get('Content-Disposition'));
+        $this->get(route('assessments.evidence.index',$a))->assertOk()->assertSee('Lembar nilai industri untuk pengujian.')
+            ->assertSee('class="evidence-thumbnail"',false)->assertSee('Lihat bukti industri lebih besar');
         $this->assertDatabaseHas('audit_logs',['action'=>'assessment.evidence_added','subject_id'=>$e->id,'user_id'=>auth()->id()]);
         $this->expectException(\LogicException::class); $e->update(['note'=>'Overwrite']);
     }

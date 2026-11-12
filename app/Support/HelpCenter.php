@@ -112,13 +112,13 @@ class HelpCenter
                 'key' => 'penilaian-siswa',
                 'title' => 'Penilaian per siswa',
                 'summary' => 'Seluruh bukti, nilai resmi, pengesahan, masa selesai PKL, dan kesiapan sertifikat siswa dipusatkan pada halaman ini.',
-                'steps' => ['Periksa alert waktu selesai PKL dan identitas penempatan.', 'Buka setoran/foto siswa, cocokkan dengan sumber, lalu terapkan atau input manual ke nilai resmi.', 'Sahkan nilai setelah bukti sesuai, kemudian lanjutkan ke sertifikat dari bagian terakhir.'],
+                'steps' => ['Periksa alert waktu selesai PKL dan identitas penempatan.', 'Periksa thumbnail foto siswa; tekan gambar untuk overlay yang lebih besar, atau gunakan Unduh/Buka di tab lain.', 'Cocokkan bukti dengan sumber, lalu terapkan atau input manual ke nilai resmi.', 'Sahkan nilai setelah bukti sesuai, kemudian lanjutkan ke sertifikat dari bagian terakhir.'],
             ],
             'assessments.evidence.*' => [
                 'key' => 'bukti-penilaian',
                 'title' => 'Bukti nilai industri',
                 'summary' => 'Bandingkan seluruh informasi nilai dengan dokumen industri, lalu koreksi atau sahkan sebagai koordinator.',
-                'steps' => ['Periksa identitas siswa, aspek, bobot, hasil, dan nilai akhir yang ditampilkan.', 'Bandingkan dengan PDF/foto sumber industri; gunakan tombol koreksi bila isian belum sama.', 'Unggah bukti dan catatan yang cukup untuk audit, lalu sahkan hanya setelah sesuai.'],
+                'steps' => ['Periksa identitas siswa, aspek, bobot, hasil, dan nilai akhir yang ditampilkan.', 'Bandingkan dengan PDF/foto sumber industri; gambar tampil sebagai thumbnail dan dapat diperbesar melalui overlay.', 'Gunakan Unduh atau Buka di tab lain bila pemeriksaan lebih rinci diperlukan.', 'Unggah bukti dan catatan yang cukup untuk audit, lalu sahkan hanya setelah sesuai.'],
             ],
             'monitoring.show' => [
                 'key' => 'monitoring-kasus',

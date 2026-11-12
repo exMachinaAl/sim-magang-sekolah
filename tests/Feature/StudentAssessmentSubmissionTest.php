@@ -57,7 +57,10 @@ class StudentAssessmentSubmissionTest extends TestCase
         $this->assertSame($payload['values'], $submission->field_values);
         $this->assertSame('80.00', $submission->calculated_score);
         $this->assertTrue($submission->hasPhoto());
-        $this->get(route('assessments.submissions.photo',$submission))->assertOk()->assertHeader('content-type','image/jpeg');
+        $photoResponse=$this->get(route('assessments.submissions.photo',$submission))->assertOk()->assertHeader('content-type','image/jpeg');
+        $this->assertStringContainsString('inline;',$photoResponse->headers->get('Content-Disposition'));
+        $photoDownload=$this->get(route('assessments.submissions.photo',[$submission,'download'=>1]))->assertOk();
+        $this->assertStringContainsString('attachment;',$photoDownload->headers->get('Content-Disposition'));
 
         $other = User::where('role','siswa')->where('id','!=',$student->id)->firstOrFail();
         $this->actingAs($other)->get(route('assessments.submissions.photo',$submission))->assertNotFound();
@@ -70,6 +73,8 @@ class StudentAssessmentSubmissionTest extends TestCase
             ->assertSee('Setoran nilai dari siswa')->assertSee('Periksa Penilaian Siswa')->assertSee('Segera dinilai');
         $this->get(route('assessments.student',[$placement,'submission_id'=>$submission->id]))->assertOk()
             ->assertSee('Dodi Pembimbing Industri')->assertSee('Lihat foto bukti')
+            ->assertSee('class="evidence-thumbnail"',false)->assertSee('id="assessment-evidence-lightbox"',false)
+            ->assertSee('Unduh gambar')->assertSee('Buka di tab lain')
             ->assertSee('Perlu segera dinilai')->assertSee('1. Setoran dan bukti dari siswa')
             ->assertSee('2. Nilai resmi koordinator')->assertSee('3. Bukti tambahan koordinator')
             ->assertSee('4. Lanjutkan ke sertifikat')->assertSee('Form diprefill dari setoran')->assertSee('value="80"',false);
@@ -93,9 +98,11 @@ class StudentAssessmentSubmissionTest extends TestCase
             'file'=>UploadedFile::fake()->image('bukti-koordinator.png',40,40),
         ])->assertSessionHasNoErrors()->assertRedirect(route('assessments.student',$placement));
         $this->get(route('assessments.student',$placement))->assertOk()
-            ->assertSee('bukti-koordinator.png')->assertSee('Sahkan Nilai')->assertSee('Perlu segera dinilai');
+            ->assertSee('bukti-koordinator.png')->assertSee('Lihat bukti tambahan lebih besar')
+            ->assertSee('Sahkan Nilai')->assertSee('Perlu segera dinilai');
         $this->get(route('assessments.evidence.index',$assessment))->assertOk()
-            ->assertSee('Setoran siswa yang pernah diterapkan')->assertSee('Lihat foto sumber siswa');
+            ->assertSee('Setoran siswa yang pernah diterapkan')->assertSee('Lihat foto sumber siswa')
+            ->assertSee('Lihat bukti industri lebih besar')->assertSee('data-evidence-preview',false);
 
         $this->actingAs($student)->get(route('assessments.student',$placement))->assertForbidden();
     }

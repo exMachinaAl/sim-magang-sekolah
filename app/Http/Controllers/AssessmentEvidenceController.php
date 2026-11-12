@@ -50,7 +50,9 @@ class AssessmentEvidenceController
         abort_unless(is_string($bytes) && strlen($bytes)===$evidence->size && hash_equals($evidence->sha256,hash('sha256',$bytes)),409,'Integritas bukti gagal. Hubungi koordinator; dokumen tidak dikirim.');
         $extension=['application/pdf'=>'pdf','image/jpeg'=>'jpg','image/png'=>'png'][$evidence->mime]??null;
         abort_unless($extension,409,'Format arsip tidak dikenali.');
-        return response($bytes,200,['Content-Type'=>$evidence->mime,'Content-Disposition'=>'attachment; filename="bukti-nilai-'.$evidence->id.'.'.$extension.'"',
-            'Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"sandbox; default-src 'none'"]);
+        $inline=$request->boolean('inline') && str_starts_with($evidence->mime,'image/');
+        return response($bytes,200,['Content-Type'=>$evidence->mime,'Content-Disposition'=>($inline?'inline':'attachment').'; filename="bukti-nilai-'.$evidence->id.'.'.$extension.'"',
+            'Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>$inline
+                ? "sandbox; default-src 'none'; img-src 'self' data:" : "sandbox; default-src 'none'"]);
     }
 }
