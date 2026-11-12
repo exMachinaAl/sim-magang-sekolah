@@ -4,7 +4,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable {
  use Notifiable;
- protected $fillable=['name','nip','email','password','role','is_active','archived_at','archived_by'];
+ protected $fillable=['name','nip','email','username','password','role','is_active','archived_at','archived_by'];
  protected $hidden=['password','remember_token'];
  protected function casts(): array {return ['password'=>'hashed','is_active'=>'boolean','archived_at'=>'datetime'];}
  public function student(){return $this->hasOne(Student::class);}

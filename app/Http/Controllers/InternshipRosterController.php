@@ -115,7 +115,7 @@ class InternshipRosterController
             Audit::record('internship_roster.created', $roster, ['status' => $roster->internship_status]);
         });
 
-        return back()->with('success', 'Siswa dan akun terhubung ke roster. Login dengan NIS; password akun baru: tanggal lahir DDMMYYYY. Password akun lama tidak diubah.');
+        return back()->with('success', 'Siswa dan akun terhubung ke roster. Username adalah NIS tanpa tanda baca; password akun baru: tanggal lahir DDMMYYYY. Password akun lama tidak diubah.');
     }
 
     public function update(Request $request, InternshipRoster $roster)

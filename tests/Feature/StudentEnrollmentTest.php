@@ -30,11 +30,12 @@ class StudentEnrollmentTest extends TestCase
             ->assertRedirect()->assertSessionHasNoErrors();
         $student = Student::with('user')->firstOrFail();
         $this->assertNull($student->user->email);
+        $this->assertSame('0012233', $student->user->username);
         $this->assertTrue(Hash::check('07112008', $student->user->password));
         $this->assertNotSame('07112008', $student->user->password);
         $this->assertSame('2008-11-07', $student->birth_date->toDateString());
         $this->post(route('logout'));
-        $this->post(route('login.attempt'), ['login'=>'001/22.33', 'password'=>'07112008'])
+        $this->post(route('login.attempt'), ['login'=>'0012233', 'password'=>'07112008'])
             ->assertRedirect(route('dashboard'));
         $this->assertAuthenticatedAs($student->user);
         $this->get(route('dashboard'))->assertOk()->assertSee('Data Diri Saya')->assertSee('001/22.33')
@@ -42,6 +43,24 @@ class StudentEnrollmentTest extends TestCase
         $this->put(route('profile.password'), ['current_password'=>'07112008', 'password'=>'KataSandiBaru123',
             'password_confirmation'=>'KataSandiBaru123'])->assertSessionHasNoErrors();
         $this->assertTrue(Hash::check('KataSandiBaru123', $student->user->fresh()->password));
+    }
+
+    public function test_student_login_accepts_formatted_nis_but_uses_one_normalized_rate_limit_identity(): void
+    {
+        $this->actingAs($this->coordinator())->post(route('students.store'), $this->data())->assertSessionHasNoErrors();
+        $this->post(route('logout'));
+        $this->post(route('login.attempt'), ['login'=>'001/22.33', 'password'=>'07112008'])
+            ->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs(Student::firstOrFail()->user);
+    }
+
+    public function test_different_nis_that_normalize_to_same_username_are_rejected(): void
+    {
+        $this->actingAs($this->coordinator())->post(route('students.store'), $this->data())->assertSessionHasNoErrors();
+        $this->post(route('students.store'), $this->data(['nis'=>'0012/2.33', 'name'=>'Siswa Berbeda']))
+            ->assertSessionHasErrors('nis');
+        $this->assertDatabaseCount('students', 1);
+        $this->assertDatabaseCount('internship_rosters', 1);
     }
 
     public function test_roster_registration_reuses_identity_across_years_without_resetting_password(): void

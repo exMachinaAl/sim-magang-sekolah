@@ -12,12 +12,13 @@ class AuthController {
   $request->merge(['login'=>$request->input('login',$request->input('email'))]);
   $data=$request->validate(['login'=>'required|string|max:255','password'=>'required|string']);
   $login=trim($data['login']);
-  $key=strtolower($login).'|'.$request->ip();
+  $studentUsername=str_contains($login,'@')?null:preg_replace('/\D+/', '', $login);
+  $key=strtolower($studentUsername?:$login).'|'.$request->ip();
   if(RateLimiter::tooManyAttempts($key,5)) throw ValidationException::withMessages(['login'=>'Terlalu banyak percobaan. Coba kembali dalam '.RateLimiter::availableIn($key).' detik.']);
   $account=str_contains($login,'@') ? User::where('email',$login)->first()
-   : User::where('role','siswa')->whereHas('student',fn($q)=>$q->where('nis',$login))->first();
+   : ($studentUsername!=='' ? User::where('role','siswa')->where('username',$studentUsername)->first() : null);
   if(!$account || !Auth::attempt(['id'=>$account->id,'password'=>$data['password'],'is_active'=>true])){
-   RateLimiter::hit($key,60);throw ValidationException::withMessages(['login'=>'NIS/email, kata sandi, atau status akun tidak valid.']);
+   RateLimiter::hit($key,60);throw ValidationException::withMessages(['login'=>'Username NIS/email, kata sandi, atau status akun tidak valid.']);
   }
   RateLimiter::clear($key);$request->session()->regenerate();
   return redirect()->intended(route('dashboard'));

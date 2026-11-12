@@ -16,8 +16,23 @@ class StudentEnrollment
     {
         Validator::make($data, ['major' => ['required', Rule::in(InternshipRoster::officialMajors())]])->validate();
         return DB::transaction(function () use ($data) {
+            $username = StudentLogin::fromNis($data['nis'] ?? null);
             $student = Student::with('user')->where('nis', $data['nis'])->lockForUpdate()->first();
             if ($student) {
+                $incomingName = preg_replace('/\s+/', ' ', mb_strtoupper(trim((string) ($data['name'] ?? ''))));
+                $storedName = preg_replace('/\s+/', ' ', mb_strtoupper(trim($student->user->name)));
+                if ($incomingName !== '' && $incomingName !== $storedName) {
+                    throw ValidationException::withMessages([
+                        'nis' => 'NIS '.$data['nis'].' sudah dimiliki '.$student->user->name.'. Nama berbeda tidak boleh digabung otomatis.',
+                    ]);
+                }
+                $owner = User::where('username', $username)->where('id', '!=', $student->user_id)->first();
+                if ($owner) {
+                    throw ValidationException::withMessages([
+                        'nis' => 'Normalisasi NIS menghasilkan username '.$username.' yang sudah digunakan akun lain.',
+                    ]);
+                }
+                if ($student->user->username !== $username) $student->user->update(['username' => $username]);
                 if (! empty($data['birth_date'])) {
                     Validator::make($data, ['birth_date'=>'required|date_format:Y-m-d|before:today'])->validate();
                     if ($student->birth_date && $student->birth_date->toDateString() !== $data['birth_date']) {
@@ -34,8 +49,13 @@ class StudentEnrollment
                 'class_name'=>'required|string|max:70', 'major'=>'required|string|max:120',
                 'email'=>'nullable|email|max:255|unique:users,email',
             ], ['birth_date.required'=>'Tanggal lahir wajib diisi untuk membuat akun NIS '.$data['nis'].'.'])->validate();
+            if (User::where('username', $username)->exists()) {
+                throw ValidationException::withMessages([
+                    'nis' => 'Normalisasi NIS menghasilkan username '.$username.' yang sudah digunakan akun lain.',
+                ]);
+            }
             $user = User::create([
-                'name'=>$data['name'], 'email'=>$data['email'] ?? null,
+                'name'=>$data['name'], 'email'=>$data['email'] ?? null, 'username'=>$username,
                 'password'=>Carbon::createFromFormat('Y-m-d', $data['birth_date'])->format('dmY'),
                 'role'=>'siswa', 'is_active'=>true,
             ]);

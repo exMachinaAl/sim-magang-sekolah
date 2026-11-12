@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{User,Student,Company,InternshipPeriod,InternshipRoster,Placement};
-use App\Support\{Audit,Access};
+use App\Support\{Audit,Access,StudentLogin};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -32,7 +32,7 @@ class MasterDataController {
    ->when($selectedPeriod,fn($q)=>$q->whereHas('rosters',fn($rosters)=>$rosters->where('internship_period_id',$selectedPeriod->id)))
    ->whereHas('rosters')
    ->when($r->q,fn($q)=>$q->where(fn($search)=>$search->where('nis','like','%'.$r->q.'%')
-    ->orWhereHas('user',fn($user)=>$user->where('name','like','%'.$r->q.'%'))))
+    ->orWhereHas('user',fn($user)=>$user->where('name','like','%'.$r->q.'%')->orWhere('username','like','%'.$r->q.'%'))))
    ->latest()->paginate(15)->withQueryString();
   return view('masters.students',compact('items','majors','academicYear','periods','selectedPeriod','showAllPeriods','periodSelection'));
  }
@@ -41,7 +41,7 @@ class MasterDataController {
    'birth_date'=>'required|date_format:Y-m-d|before:today','nis'=>'required|string|max:30|unique:students,nis','nisn'=>'nullable|max:30','class_name'=>'required|max:70',
    'academic_year'=>['nullable','regex:/^\d{4}\/\d{4}$/'],'major'=>['required',Rule::in(InternshipRoster::officialMajors())]]);
   app(\App\Support\StudentEnrollment::class)->register($d,$r->user()->id);
-  return back()->with('success','Data dan akun siswa dibuat. Login dengan NIS; password awal tanggal lahir (DDMMYYYY).');
+  return back()->with('success','Data dan akun siswa dibuat. Username adalah NIS tanpa tanda baca; password awal tanggal lahir (DDMMYYYY).');
  }
  public function updateStudent(Request $r,Student $student){
   $d=$r->validate(['name'=>'required|string|max:150',
@@ -55,7 +55,11 @@ class MasterDataController {
     throw \Illuminate\Validation\ValidationException::withMessages(['nis'=>'NIS tujuan sudah digunakan di Kontrol PKL. Periksa identitas terlebih dahulu.']);
    }
    $old=['user'=>$student->user->only('name','email'),'student'=>$student->only('nis','nisn','class_name','major')];
-   $student->user->update(['name'=>$d['name'],'email'=>$d['email']??null]);
+   $username=StudentLogin::fromNis($d['nis']);
+   if (User::where('username',$username)->where('id','!=',$student->user_id)->exists()) {
+    throw \Illuminate\Validation\ValidationException::withMessages(['nis'=>'Normalisasi NIS menghasilkan username '.$username.' yang sudah digunakan akun lain.']);
+   }
+   $student->user->update(['name'=>$d['name'],'email'=>$d['email']??null,'username'=>$username]);
    InternshipRoster::where('nis',$student->nis)->update(['nis'=>$d['nis'],'nisn'=>$d['nisn']??null,'name'=>$d['name'],'email'=>$d['email']??null,'student_id'=>$student->id,'updated_by'=>auth()->id()]);
    $student->update(collect($d)->only(['nis','nisn','class_name','major','birth_date'])->all());
    $latest=$student->rosters()->orderByDesc('academic_year')->lockForUpdate()->first();

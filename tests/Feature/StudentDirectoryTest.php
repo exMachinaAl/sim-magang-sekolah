@@ -61,6 +61,14 @@ class StudentDirectoryTest extends TestCase
             ->assertOk()->assertSee('name="roster_ids[]"',false)->assertSee('Nama Unik Siswa')->assertDontSee('Arsip Siswa Lama');
     }
 
+    public function test_student_directory_can_search_by_normalized_username_without_changing_displayed_nis(): void
+    {
+        app(StudentEnrollment::class)->register($this->data(['nis'=>'001/22.33']));
+
+        $this->actingAs($this->actor())->get(route('students.index',['q'=>'0012233']))
+            ->assertOk()->assertSee('Nama Unik Siswa')->assertSee('001/22.33')->assertSee('Username: 0012233');
+    }
+
     public function test_student_directory_defaults_to_active_period_and_can_show_archived_or_all_periods(): void
     {
         $service=app(StudentEnrollment::class);
@@ -113,6 +121,7 @@ class StudentDirectoryTest extends TestCase
             'nis'=>'NEW001','nisn'=>'009988','name'=>'Nama Dikoreksi','class_name'=>'XII DKV 2','major'=>'Desain Komunikasi Visual',
         ]))->assertSessionHasNoErrors();
         $this->assertDatabaseHas('students',['id'=>$student->id,'nis'=>'NEW001','class_name'=>'XII DKV 2','major'=>'Desain Komunikasi Visual']);
+        $this->assertSame('001',$student->user->fresh()->username);
         $this->assertDatabaseHas('internship_rosters',['student_id'=>$student->id,'academic_year'=>'2025/2026','class_name'=>'XI TKJ 1','major'=>'Teknik Komputer dan Jaringan','nis'=>'NEW001','nisn'=>'009988']);
         $this->assertSame('XII DKV 2',$latest->fresh()->class_name);
         $this->assertSame('2026-12-31',$latest->fresh()->internship_ends_at->toDateString());
